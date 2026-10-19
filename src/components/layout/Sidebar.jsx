@@ -50,7 +50,7 @@ const getActiveModule = (pathname) => {
   if (pathname === "/inbox" || pathname.startsWith("/inbox/")) {
     return "inbox";
   }
-
+  
   if (
     pathname === "/sales" ||
     pathname.startsWith("/sales/") ||
