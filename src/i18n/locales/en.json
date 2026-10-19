@@ -1,0 +1,135 @@
+{
+    "common": {
+        "management": "Management",
+        "workspace": "Workspace",
+        "navigation": "Navigation",
+        "expandMenu": "Expand menu",
+        "collapseMenu": "Collapse menu",
+        "businessManagement": "Business management",
+        "logout": "Logout"
+    },
+    "main": {
+        "business": "Business",
+        "catalog": "Catalog",
+        "sales": "Sales",
+        "crm": "CRM",
+        "marketing": "Marketing",
+        "inbox": "Inbox",
+        "team": "Team",
+        "reports": "Reports",
+        "settings": "General"
+    },
+    "business": {
+        "title": "Business",
+        "overview": "Overview",
+        "website": "Website",
+        "content": "Content",
+        "distribution": "Distribution",
+        "forms": "Forms",
+        "report": "Report"
+    },
+    "website": {
+        "title": "Website",
+        "allWebsites": "All Websites",
+        "createWebsite": "Create Website",
+        "domains": "Domains",
+        "themes": "Themes"
+    },
+    "websiteDetail": {
+        "title": "Website",
+        "overview": "Overview",
+        "pages": "Pages",
+        "blog": "Blog",
+        "theme": "Theme",
+        "domain": "Domain",
+        "navigation": "Navigation",
+        "seo": "SEO",
+        "settings": "Settings"
+    },
+    "catalog": {
+        "title": "Catalog",
+        "products": "Products",
+        "inventory": "Inventory",
+        "bulkImport": "Bulk Import",
+        "importExport": "Import / Export"
+    },
+    "sales": {
+        "title": "Sales",
+        "orders": "Orders",
+        "customers": "Customers",
+        "invoices": "Invoices",
+        "payments": "Payments",
+        "refunds": "Refunds"
+    },
+    "crm": {
+        "title": "CRM",
+        "overview": "Overview",
+        "leads": "Leads",
+        "leadPipeline": "Lead Pipeline",
+        "leadSources": "Lead Sources",
+        "leadStatus": "Lead Status",
+        "opportunities": "Opportunities",
+        "deals": "Deals",
+        "dealPipeline": "Deal Pipeline",
+        "contacts": "Contacts",
+        "companies": "Companies",
+        "customers": "Customers",
+        "tasks": "Tasks",
+        "activities": "Activities",
+        "calls": "Calls",
+        "interactions": "Interactions",
+        "segments": "Segments",
+        "tags": "Tags"
+    },
+    "marketing": {
+        "title": "Marketing",
+        "overview": "Overview",
+        "campaigns": "Campaigns",
+        "templates": "Templates",
+        "automation": "Automation",
+        "workflows": "Workflows",
+        "audiences": "Audiences",
+        "segments": "Segments",
+        "leadGeneration": "Lead Generation"
+    },
+    "inbox": {
+        "title": "Inbox",
+        "allMessages": "All Messages",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "unread": "Unread",
+        "starred": "Starred",
+        "assignedToMe": "Assigned to Me"
+    },
+    "team": {
+        "title": "Team",
+        "members": "Members",
+        "addMember": "Add Member"
+    },
+    "reports": {
+        "title": "Reports",
+        "overview": "Overview",
+        "sales": "Sales",
+        "orders": "Orders",
+        "products": "Products",
+        "leads": "Leads",
+        "deals": "Deals",
+        "customers": "Customers",
+        "marketing": "Marketing",
+        "campaigns": "Campaigns",
+        "staffPerformance": "Staff Performance"
+    },
+    "settings": {
+        "title": "Settings",
+        "overview": "Overview",
+        "integrations": "Integrations",
+        "payments": "Payments",
+        "api": "API",
+        "webhooks": "Webhooks",
+        "notifications": "Notifications",
+        "security": "Security",
+        "billing": "Billing"
+    }
+}

@@ -1,0 +1,135 @@
+{
+  "common": {
+    "management": "الإدارة",
+    "workspace": "مساحة العمل",
+    "navigation": "التنقل",
+    "expandMenu": "توسيع القائمة",
+    "collapseMenu": "طي القائمة",
+    "businessManagement": "إدارة الأعمال",
+    "logout": "تسجيل الخروج"
+  },
+  "main": {
+    "business": "الأعمال",
+    "catalog": "الكتالوج",
+    "sales": "المبيعات",
+    "crm": "إدارة علاقات العملاء",
+    "marketing": "التسويق",
+    "inbox": "صندوق الوارد",
+    "team": "الفريق",
+    "reports": "التقارير",
+    "settings": "عام"
+  },
+  "business": {
+    "title": "الأعمال",
+    "overview": "نظرة عامة",
+    "website": "الموقع الإلكتروني",
+    "content": "المحتوى",
+    "distribution": "التوزيع",
+    "forms": "النماذج",
+    "report": "التقرير"
+  },
+  "website": {
+    "title": "الموقع الإلكتروني",
+    "allWebsites": "جميع المواقع",
+    "createWebsite": "إنشاء موقع",
+    "domains": "النطاقات",
+    "themes": "القوالب"
+  },
+  "websiteDetail": {
+    "title": "الموقع الإلكتروني",
+    "overview": "نظرة عامة",
+    "pages": "الصفحات",
+    "blog": "المدونة",
+    "theme": "القالب",
+    "domain": "النطاق",
+    "navigation": "التنقل",
+    "seo": "تحسين محركات البحث",
+    "settings": "الإعدادات"
+  },
+  "catalog": {
+    "title": "الكتالوج",
+    "products": "المنتجات",
+    "inventory": "المخزون",
+    "bulkImport": "استيراد جماعي",
+    "importExport": "استيراد / تصدير"
+  },
+  "sales": {
+    "title": "المبيعات",
+    "orders": "الطلبات",
+    "customers": "العملاء",
+    "invoices": "الفواتير",
+    "payments": "المدفوعات",
+    "refunds": "المبالغ المستردة"
+  },
+  "crm": {
+    "title": "إدارة علاقات العملاء",
+    "overview": "نظرة عامة",
+    "leads": "العملاء المحتملون",
+    "leadPipeline": "مسار العملاء المحتملين",
+    "leadSources": "مصادر العملاء المحتملين",
+    "leadStatus": "حالة العملاء المحتملين",
+    "opportunities": "الفرص",
+    "deals": "الصفقات",
+    "dealPipeline": "مسار الصفقات",
+    "contacts": "جهات الاتصال",
+    "companies": "الشركات",
+    "customers": "العملاء",
+    "tasks": "المهام",
+    "activities": "الأنشطة",
+    "calls": "المكالمات",
+    "interactions": "التفاعلات",
+    "segments": "الشرائح",
+    "tags": "العلامات"
+  },
+  "marketing": {
+    "title": "التسويق",
+    "overview": "نظرة عامة",
+    "campaigns": "الحملات",
+    "templates": "القوالب",
+    "automation": "الأتمتة",
+    "workflows": "سير العمل",
+    "audiences": "الجمهور",
+    "segments": "الشرائح",
+    "leadGeneration": "توليد العملاء المحتملين"
+  },
+  "inbox": {
+    "title": "صندوق الوارد",
+    "allMessages": "جميع الرسائل",
+    "email": "البريد الإلكتروني",
+    "whatsapp": "واتساب",
+    "facebook": "فيسبوك",
+    "instagram": "إنستغرام",
+    "unread": "غير مقروء",
+    "starred": "المميزة بنجمة",
+    "assignedToMe": "المسندة إليّ"
+  },
+  "team": {
+    "title": "الفريق",
+    "members": "أعضاء الفريق",
+    "addMember": "إضافة عضو"
+  },
+  "reports": {
+    "title": "التقارير",
+    "overview": "نظرة عامة",
+    "sales": "المبيعات",
+    "orders": "الطلبات",
+    "products": "المنتجات",
+    "leads": "العملاء المحتملون",
+    "deals": "الصفقات",
+    "customers": "العملاء",
+    "marketing": "التسويق",
+    "campaigns": "الحملات",
+    "staffPerformance": "أداء الموظفين"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "overview": "نظرة عامة",
+    "integrations": "التكاملات",
+    "payments": "المدفوعات",
+    "api": "API",
+    "webhooks": "Webhooks",
+    "notifications": "الإشعارات",
+    "security": "الأمان",
+    "billing": "الفوترة"
+  }
+}

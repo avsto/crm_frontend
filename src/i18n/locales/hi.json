@@ -1,0 +1,135 @@
+{
+  "common": {
+    "management": "प्रबंधन",
+    "workspace": "वर्कस्पेस",
+    "navigation": "नेविगेशन",
+    "expandMenu": "मेनू खोलें",
+    "collapseMenu": "मेनू बंद करें",
+    "businessManagement": "व्यवसाय प्रबंधन",
+    "logout": "लॉगआउट"
+  },
+  "main": {
+    "business": "व्यवसाय",
+    "catalog": "कैटलॉग",
+    "sales": "बिक्री",
+    "crm": "CRM",
+    "marketing": "मार्केटिंग",
+    "inbox": "इनबॉक्स",
+    "team": "टीम",
+    "reports": "रिपोर्ट",
+    "settings": "सामान्य"
+  },
+  "business": {
+    "title": "व्यवसाय",
+    "overview": "अवलोकन",
+    "website": "वेबसाइट",
+    "content": "कंटेंट",
+    "distribution": "वितरण",
+    "forms": "फॉर्म",
+    "report": "रिपोर्ट"
+  },
+  "website": {
+    "title": "वेबसाइट",
+    "allWebsites": "सभी वेबसाइट",
+    "createWebsite": "वेबसाइट बनाएं",
+    "domains": "डोमेन",
+    "themes": "थीम"
+  },
+  "websiteDetail": {
+    "title": "वेबसाइट",
+    "overview": "अवलोकन",
+    "pages": "पेज",
+    "blog": "ब्लॉग",
+    "theme": "थीम",
+    "domain": "डोमेन",
+    "navigation": "नेविगेशन",
+    "seo": "SEO",
+    "settings": "सेटिंग्स"
+  },
+  "catalog": {
+    "title": "कैटलॉग",
+    "products": "उत्पाद",
+    "inventory": "इन्वेंटरी",
+    "bulkImport": "बल्क इम्पोर्ट",
+    "importExport": "इम्पोर्ट / एक्सपोर्ट"
+  },
+  "sales": {
+    "title": "बिक्री",
+    "orders": "ऑर्डर",
+    "customers": "ग्राहक",
+    "invoices": "इनवॉइस",
+    "payments": "भुगतान",
+    "refunds": "रिफंड"
+  },
+  "crm": {
+    "title": "CRM",
+    "overview": "अवलोकन",
+    "leads": "लीड्स",
+    "leadPipeline": "लीड पाइपलाइन",
+    "leadSources": "लीड स्रोत",
+    "leadStatus": "लीड स्थिति",
+    "opportunities": "अवसर",
+    "deals": "डील्स",
+    "dealPipeline": "डील पाइपलाइन",
+    "contacts": "कॉन्टैक्ट्स",
+    "companies": "कंपनियां",
+    "customers": "ग्राहक",
+    "tasks": "कार्य",
+    "activities": "गतिविधियां",
+    "calls": "कॉल्स",
+    "interactions": "इंटरैक्शन",
+    "segments": "सेगमेंट",
+    "tags": "टैग"
+  },
+  "marketing": {
+    "title": "मार्केटिंग",
+    "overview": "अवलोकन",
+    "campaigns": "अभियान",
+    "templates": "टेम्पलेट्स",
+    "automation": "ऑटोमेशन",
+    "workflows": "वर्कफ़्लो",
+    "audiences": "ऑडियंस",
+    "segments": "सेगमेंट",
+    "leadGeneration": "लीड जनरेशन"
+  },
+  "inbox": {
+    "title": "इनबॉक्स",
+    "allMessages": "सभी संदेश",
+    "email": "ईमेल",
+    "whatsapp": "WhatsApp",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "unread": "अपठित",
+    "starred": "स्टार किए गए",
+    "assignedToMe": "मुझे सौंपे गए"
+  },
+  "team": {
+    "title": "टीम",
+    "members": "सदस्य",
+    "addMember": "सदस्य जोड़ें"
+  },
+  "reports": {
+    "title": "रिपोर्ट",
+    "overview": "अवलोकन",
+    "sales": "बिक्री",
+    "orders": "ऑर्डर",
+    "products": "उत्पाद",
+    "leads": "लीड्स",
+    "deals": "डील्स",
+    "customers": "ग्राहक",
+    "marketing": "मार्केटिंग",
+    "campaigns": "अभियान",
+    "staffPerformance": "स्टाफ प्रदर्शन"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "overview": "अवलोकन",
+    "integrations": "इंटीग्रेशन",
+    "payments": "भुगतान",
+    "api": "API",
+    "webhooks": "वेबहुक्स",
+    "notifications": "सूचनाएं",
+    "security": "सुरक्षा",
+    "billing": "बिलिंग"
+  }
+}

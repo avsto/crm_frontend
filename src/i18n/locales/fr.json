@@ -1,0 +1,135 @@
+{
+  "common": {
+    "management": "Gestion",
+    "workspace": "Espace de travail",
+    "navigation": "Navigation",
+    "expandMenu": "Développer le menu",
+    "collapseMenu": "Réduire le menu",
+    "businessManagement": "Gestion de l'entreprise",
+    "logout": "Déconnexion"
+  },
+  "main": {
+    "business": "Entreprise",
+    "catalog": "Catalogue",
+    "sales": "Ventes",
+    "crm": "CRM",
+    "marketing": "Marketing",
+    "inbox": "Boîte de réception",
+    "team": "Équipe",
+    "reports": "Rapports",
+    "settings": "Général"
+  },
+  "business": {
+    "title": "Entreprise",
+    "overview": "Vue d'ensemble",
+    "website": "Site web",
+    "content": "Contenu",
+    "distribution": "Distribution",
+    "forms": "Formulaires",
+    "report": "Rapport"
+  },
+  "website": {
+    "title": "Site web",
+    "allWebsites": "Tous les sites web",
+    "createWebsite": "Créer un site web",
+    "domains": "Domaines",
+    "themes": "Thèmes"
+  },
+  "websiteDetail": {
+    "title": "Site web",
+    "overview": "Vue d'ensemble",
+    "pages": "Pages",
+    "blog": "Blog",
+    "theme": "Thème",
+    "domain": "Domaine",
+    "navigation": "Navigation",
+    "seo": "SEO",
+    "settings": "Paramètres"
+  },
+  "catalog": {
+    "title": "Catalogue",
+    "products": "Produits",
+    "inventory": "Inventaire",
+    "bulkImport": "Importation en masse",
+    "importExport": "Importation / Exportation"
+  },
+  "sales": {
+    "title": "Ventes",
+    "orders": "Commandes",
+    "customers": "Clients",
+    "invoices": "Factures",
+    "payments": "Paiements",
+    "refunds": "Remboursements"
+  },
+  "crm": {
+    "title": "CRM",
+    "overview": "Vue d'ensemble",
+    "leads": "Prospects",
+    "leadPipeline": "Pipeline des prospects",
+    "leadSources": "Sources des prospects",
+    "leadStatus": "Statut des prospects",
+    "opportunities": "Opportunités",
+    "deals": "Affaires",
+    "dealPipeline": "Pipeline des affaires",
+    "contacts": "Contacts",
+    "companies": "Entreprises",
+    "customers": "Clients",
+    "tasks": "Tâches",
+    "activities": "Activités",
+    "calls": "Appels",
+    "interactions": "Interactions",
+    "segments": "Segments",
+    "tags": "Étiquettes"
+  },
+  "marketing": {
+    "title": "Marketing",
+    "overview": "Vue d'ensemble",
+    "campaigns": "Campagnes",
+    "templates": "Modèles",
+    "automation": "Automatisation",
+    "workflows": "Flux de travail",
+    "audiences": "Audiences",
+    "segments": "Segments",
+    "leadGeneration": "Génération de prospects"
+  },
+  "inbox": {
+    "title": "Boîte de réception",
+    "allMessages": "Tous les messages",
+    "email": "E-mail",
+    "whatsapp": "WhatsApp",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "unread": "Non lus",
+    "starred": "Favoris",
+    "assignedToMe": "Qui me sont attribués"
+  },
+  "team": {
+    "title": "Équipe",
+    "members": "Membres",
+    "addMember": "Ajouter un membre"
+  },
+  "reports": {
+    "title": "Rapports",
+    "overview": "Vue d'ensemble",
+    "sales": "Ventes",
+    "orders": "Commandes",
+    "products": "Produits",
+    "leads": "Prospects",
+    "deals": "Affaires",
+    "customers": "Clients",
+    "marketing": "Marketing",
+    "campaigns": "Campagnes",
+    "staffPerformance": "Performance du personnel"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "overview": "Vue d'ensemble",
+    "integrations": "Intégrations",
+    "payments": "Paiements",
+    "api": "API",
+    "webhooks": "Webhooks",
+    "notifications": "Notifications",
+    "security": "Sécurité",
+    "billing": "Facturation"
+  }
+}
