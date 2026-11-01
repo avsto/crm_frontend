@@ -1136,7 +1136,7 @@ const Forms = () => {
 
                         <td className="px-4 py-4 align-top">
 
-                          <div className="flex min-w-[240px] max-w-[330px] items-start gap-3">
+                          <div className="flex min-w-[220px] max-w-[330px] items-start gap-3">
 
                             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600">
 

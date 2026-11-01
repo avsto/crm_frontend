@@ -1454,7 +1454,7 @@ export default function TemplateCreate() {
                           <button
                             type="button"
                             onClick={handleManualWhatsAppUpload}
-                            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
+                            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-green-700"
                           >
                             {mediaUploadError ? (
                               <RefreshCw size={17} />

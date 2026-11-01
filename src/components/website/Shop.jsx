@@ -926,7 +926,7 @@ export default function Shop({
       ======================================================= */}
 
       <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
           {/* ==================================================
               DESKTOP FILTER
           =================================================== */}

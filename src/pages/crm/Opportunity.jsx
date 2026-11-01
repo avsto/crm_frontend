@@ -958,7 +958,7 @@ const Opportunity = () => {
               </button>
 
               {showAssignMenu && (
-                <div className="absolute right-0 top-10 z-50 w-[240px] rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="absolute right-0 top-10 z-50 w-[220px] rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
                   <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-xs font-semibold text-slate-900">
                       Assign To
@@ -1603,7 +1603,7 @@ const Opportunity = () => {
                         <button
                           type="button"
                           onClick={() => openEditModal(opportunity)}
-                          className="flex max-w-[240px] items-center gap-2 text-left"
+                          className="flex max-w-[220px] items-center gap-2 text-left"
                         >
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[9px] font-bold text-blue-700">
                             {getInitials(opportunity?.name)}

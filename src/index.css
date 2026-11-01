@@ -2,10 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ================================
+   LIGHT THEME
+================================ */
+
+:root,
+[data-mode="light"] {
+  color-scheme: light;
+
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-subtle: #f1f5f9;
+  --app-heading: #0f172a;
+  --app-body: #334155;
+  --app-muted: #64748b;
+  --app-border: #e2e8f0;
+  --app-hover: #f1f5f9;
+}
+
+/* ================================
+   DARK THEME
+================================ */
+
+.dark,
+[data-mode="dark"] {
+  color-scheme: dark;
+
+  --app-bg: #0f172a;
+  --app-surface: #1e293b;
+  --app-subtle: #273449;
+  --app-heading: #f8fafc;
+  --app-body: #cbd5e1;
+  --app-muted: #94a3b8;
+  --app-border: #334155;
+  --app-hover: #334155;
+}
+
+/* ================================
+   GLOBAL STYLES
+================================ */
+
 html,
 body,
 #root {
   min-height: 100%;
+}
+
+html {
+  background: var(--app-bg);
 }
 
 body {
@@ -18,16 +62,80 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+
+  background: var(--app-bg);
+  color: var(--app-body);
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
+#root {
+  background: var(--app-bg);
+}
+
+/* ================================
+   INPUT
+================================ */
+
 .input {
-  @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition;
+  @apply w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition;
+
+  background: var(--app-surface);
+  color: var(--app-heading);
+  border-color: var(--app-border);
 }
 
 .input:focus {
-  @apply border-blue-500 ring-2 ring-blue-100;
+  border-color: var(--theme-primary, #3b82f6);
+  box-shadow: 0 0 0 2px var(--theme-primary-soft, #dbeafe);
 }
 
 .input::placeholder {
-  @apply text-gray-400;
+  color: var(--app-muted);
+}
+
+/* ================================
+   COMMON THEME CLASSES
+================================ */
+
+.theme-bg {
+  background: var(--app-bg);
+}
+
+.theme-surface {
+  background: var(--app-surface);
+}
+
+.theme-subtle {
+  background: var(--app-subtle);
+}
+
+.theme-heading {
+  color: var(--app-heading);
+}
+
+.theme-text {
+  color: var(--app-body);
+}
+
+.theme-muted {
+  color: var(--app-muted);
+}
+
+.theme-border {
+  border-color: var(--app-border);
+}
+
+.theme-hover:hover {
+  background: var(--app-hover);
+}
+
+/* Smooth transitions */
+
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
 }

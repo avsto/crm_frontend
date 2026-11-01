@@ -11,9 +11,10 @@ import Header from "../components/layout/Header";
 // ======================================================
 
 const PRIMARY_SIDEBAR_WIDTH = 80;
-const CONTEXT_SIDEBAR_WIDTH = 240;
+const CONTEXT_SIDEBAR_WIDTH = 220;
 
-const FULL_SIDEBAR_WIDTH = PRIMARY_SIDEBAR_WIDTH + CONTEXT_SIDEBAR_WIDTH;
+const FULL_SIDEBAR_WIDTH =
+  PRIMARY_SIDEBAR_WIDTH + CONTEXT_SIDEBAR_WIDTH;
 
 // ======================================================
 // NORMALIZE PATH
@@ -38,131 +39,39 @@ const normalizePath = (pathname = "") => {
 const getModuleFromPath = (pathname = "") => {
   const path = normalizePath(pathname);
 
-  // ====================================================
-  // BUSINESS
-  // ====================================================
+  const routes = {
+    business: [
+      "/business",
+      "/website",
+      "/integrations",
+      "/forms",
+      "/content",
+      "/distribution",
+    ],
 
-  if (
-    path === "/business" ||
-    path.startsWith("/business/") ||
-    path === "/website" ||
-    path.startsWith("/website/") ||
-    path === "/integrations" ||
-    path.startsWith("/integrations/") ||
-    path === "/forms" ||
-    path.startsWith("/forms/") ||
-    path === "/content" ||
-    path.startsWith("/content/") ||
-    path === "/distribution" ||
-    path.startsWith("/distribution/")
-  ) {
-    return "business";
-  }
+    catalog: ["/products", "/categories", "/inventory"],
 
-  // ====================================================
-  // CATALOG
-  // ====================================================
+    sales: ["/sales", "/orders", "/payments", "/invoices", "/refunds"],
 
-  if (
-    path === "/products" ||
-    path.startsWith("/products/") ||
-    path === "/categories" ||
-    path.startsWith("/categories/") ||
-    path === "/inventory" ||
-    path.startsWith("/inventory/")
-  ) {
-    return "catalog";
-  }
+    crm: ["/crm", "/leads", "/contacts", "/customers"],
 
-  // ====================================================
-  // SALES
-  // ====================================================
+    marketing: ["/marketing"],
 
-  if (
-    path === "/sales" ||
-    path.startsWith("/sales/") ||
-    path === "/orders" ||
-    path.startsWith("/orders/") ||
-    path === "/payments" ||
-    path.startsWith("/payments/") ||
-    path === "/invoices" ||
-    path.startsWith("/invoices/") ||
-    path === "/refunds" ||
-    path.startsWith("/refunds/")
-  ) {
-    return "sales";
-  }
+    team: ["/team", "/staff"],
 
-  // ====================================================
-  // CRM
-  // ====================================================
+    reports: ["/reports", "/report"],
 
-  if (
-    path === "/crm" ||
-    path.startsWith("/crm/") ||
-    path === "/leads" ||
-    path.startsWith("/leads/") ||
-    path === "/contacts" ||
-    path.startsWith("/contacts/") ||
-    path === "/customers" ||
-    path.startsWith("/customers/")
-  ) {
-    return "crm";
-  }
+    settings: ["/settings"],
 
-  // ====================================================
-  // MARKETING
-  // ====================================================
+    dashboard: ["/dashboard"],
+  };
 
-  if (path === "/marketing" || path.startsWith("/marketing/")) {
-    return "marketing";
-  }
+  for (const [module, prefixes] of Object.entries(routes)) {
+    const matched = prefixes.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+    );
 
-  // ====================================================
-  // INBOX
-  // ====================================================
-
- 
-  // ====================================================
-  // TEAM
-  // ====================================================
-
-  if (
-    path === "/team" ||
-    path.startsWith("/team/") ||
-    path === "/staff" ||
-    path.startsWith("/staff/")
-  ) {
-    return "team";
-  }
-
-  // ====================================================
-  // REPORTS
-  // ====================================================
-
-  if (
-    path === "/reports" ||
-    path.startsWith("/reports/") ||
-    path === "/report" ||
-    path.startsWith("/report/")
-  ) {
-    return "reports";
-  }
-
-  // ====================================================
-  // SETTINGS
-  // ====================================================
-
-  if (path === "/settings" || path.startsWith("/settings/")) {
-    return "settings";
-  }
-
-  // ====================================================
-  // DASHBOARD
-  // ====================================================
-
-  if (path === "/dashboard" || path.startsWith("/dashboard/")) {
-    return "dashboard";
+    if (matched) return module;
   }
 
   return "dashboard";
@@ -175,24 +84,19 @@ const getModuleFromPath = (pathname = "") => {
 const isAutomationEditorRoute = (pathname = "") => {
   const path = normalizePath(pathname);
 
-  // Create Automation
+  // Create automation
   if (path === "/marketing/automation/create") {
     return true;
   }
 
-  // Edit Automation
-  //
-  // Example:
+  // Edit automation:
   // /marketing/automation/123/edit
   // /marketing/automation/abc123/edit
-  //
-  const automationEditPattern = /^\/marketing\/automation\/[^/]+\/edit$/;
 
-  if (automationEditPattern.test(path)) {
-    return true;
-  }
+  const automationEditPattern =
+    /^\/marketing\/automation\/[^/]+\/edit$/;
 
-  return false;
+  return automationEditPattern.test(path);
 };
 
 // ======================================================
@@ -207,7 +111,7 @@ const AdminLayout = () => {
   // ====================================================
 
   const [activeModule, setActiveModule] = useState(() =>
-    getModuleFromPath(location.pathname),
+    getModuleFromPath(location.pathname)
   );
 
   // ====================================================
@@ -232,9 +136,6 @@ const AdminLayout = () => {
 
   const handleModuleChange = (module) => {
     setActiveModule(module);
-
-    // New module open hone par
-    // Context Sidebar automatically expand
     setContextCollapsed(false);
   };
 
@@ -242,7 +143,9 @@ const AdminLayout = () => {
   // CHECK AUTOMATION CREATE / EDIT
   // ====================================================
 
-  const hideContextSidebar = isAutomationEditorRoute(location.pathname);
+  const hideContextSidebar = isAutomationEditorRoute(
+    location.pathname
+  );
 
   // ====================================================
   // SHOW CONTEXT SIDEBAR
@@ -257,47 +160,22 @@ const AdminLayout = () => {
 
   let contentLeft = PRIMARY_SIDEBAR_WIDTH;
 
-  if (showContextSidebar) {
-    if (contextCollapsed) {
-      contentLeft = PRIMARY_SIDEBAR_WIDTH;
-    } else {
-      contentLeft = FULL_SIDEBAR_WIDTH;
-    }
+  if (showContextSidebar && !contextCollapsed) {
+    contentLeft = FULL_SIDEBAR_WIDTH;
   }
-
-  // ====================================================
-  // AUTOMATION EDITOR
-  // ====================================================
-  //
-  // Create/Edit page:
-  //
-  // Main Sidebar = 80px
-  // Context Sidebar = hidden
-  // Content starts after 80px
-  //
-  // Normal page:
-  //
-  // Main Sidebar = 80px
-  // Context Sidebar = 240px
-  // Content starts after 320px
-  //
-  // ====================================================
 
   // ====================================================
   // RENDER
   // ====================================================
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* ==================================================
-          PRIMARY SIDEBAR
-      ================================================== */}
+    <div className="brielix-admin-layout min-h-screen">
+
+      {/* PRIMARY SIDEBAR */}
 
       <Sidebar onModuleChange={handleModuleChange} />
 
-      {/* ==================================================
-          CONTEXT SIDEBAR
-      ================================================== */}
+      {/* CONTEXT SIDEBAR */}
 
       {showContextSidebar && (
         <ContextSidebar
@@ -307,64 +185,31 @@ const AdminLayout = () => {
         />
       )}
 
-      {/* ==================================================
-          MAIN APPLICATION
-      ================================================== */}
+      {/* MAIN APPLICATION */}
 
       <div
-        className="
-          min-h-screen
-          transition-[margin-left]
-          duration-300
-          ease-out
-        "
+        className="brielix-main-content min-h-screen min-w-0 transition-[margin-left] duration-300 ease-out"
         style={{
           marginLeft: `${contentLeft}px`,
         }}
       >
-        {/* ==================================================
-            HEADER
-        ================================================== */}
 
-        <header
-          className="
-            sticky
-            top-0
-            z-40
-            h-16
-            border-b
-            border-slate-200/80
-            bg-white/90
-            backdrop-blur-xl
-          "
-        >
+        {/* HEADER */}
+
+        <header className="brielix-main-header sticky top-0 z-40 h-16 border-b backdrop-blur-xl">
           <Header />
         </header>
 
-        {/* ==================================================
-            PAGE CONTENT
-        ================================================== */}
+        {/* PAGE CONTENT */}
 
-        <main
-          className="
-            min-h-[calc(100vh-64px)]
-            bg-slate-50
-          "
-        >
-          <div
-            className="
-              min-h-[calc(100vh-64px)]
-              min-w-0
-            "
-          >
+        <main className="brielix-page-content min-h-[calc(100vh-64px)]">
+          <div className="min-h-[calc(100vh-64px)] min-w-0">
             <Outlet />
           </div>
         </main>
       </div>
 
-      {/* ==================================================
-          REOPEN CONTEXT SIDEBAR
-      ================================================== */}
+      {/* REOPEN CONTEXT SIDEBAR */}
 
       {showContextSidebar && contextCollapsed && (
         <button
@@ -372,34 +217,46 @@ const AdminLayout = () => {
           onClick={() => setContextCollapsed(false)}
           title="Open menu"
           aria-label="Open context menu"
-          className="
-            fixed
-            left-[68px]
-            top-1/2
-            z-[60]
-            flex
-            h-10
-            w-7
-            -translate-y-1/2
-            items-center
-            justify-center
-            rounded-r-xl
-            border
-            border-l-0
-            border-slate-200
-            bg-white
-            text-slate-500
-            shadow-[0_4px_15px_rgba(15,23,42,0.12)]
-            transition-all
-            duration-200
-            hover:w-8
-            hover:bg-slate-50
-            hover:text-slate-900
-          "
+          className="brielix-sidebar-reopen fixed left-[68px] top-1/2 z-[60] flex h-10 w-7 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 shadow-md transition-all duration-200 hover:w-8"
         >
           <ChevronRight size={16} strokeWidth={2} />
         </button>
       )}
+
+      {/* THEME STYLES */}
+
+      <style>{`
+        .brielix-admin-layout {
+          background: var(--app-bg);
+          color: var(--app-body);
+        }
+
+        .brielix-main-content {
+          background: var(--app-bg);
+        }
+
+        .brielix-main-header {
+          background: var(--app-surface);
+          border-color: var(--app-border);
+        }
+
+        .brielix-page-content {
+          background: var(--app-bg);
+          color: var(--app-body);
+        }
+
+        .brielix-sidebar-reopen {
+          background: var(--app-surface);
+          border-color: var(--app-border);
+          color: var(--app-muted);
+          box-shadow: 0 4px 15px rgba(15, 23, 42, 0.12);
+        }
+
+        .brielix-sidebar-reopen:hover {
+          color: var(--theme-primary);
+          background: var(--theme-primary-soft);
+        }
+      `}</style>
     </div>
   );
 };

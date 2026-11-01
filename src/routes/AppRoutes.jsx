@@ -117,6 +117,7 @@ import Distribution from "../pages/distribution/Distribution";
 
 import BusinessSettings from "../pages/settings/BusinessSettings";
 import Integrations from "../pages/settings/Integrations";
+import Payment from "../pages/settings/Payment";
 
 import EditOrder from "../pages/orders/EditOrder";
 import Team from "../pages/team/Team";
@@ -252,9 +253,7 @@ const AppRoutes = () => {
         path="/website/:websiteId/page/:pageId/preview"
         element={<WebsitePreview />}
       />
-
       <Route path="/site/:slug/*" element={<PublicWebsite />} />
-
       <Route path="/forms/:formId" element={<FormPreview />} />
 
       <Route element={<PublicRoute />}>
@@ -477,6 +476,7 @@ const AppRoutes = () => {
 
           <Route path="/settings" element={<BusinessSettings />} />
           <Route path="/integrations" element={<Integrations />} />
+          <Route path="/settings/payments" element={<Payment />} />
         </Route>
       </Route>
 
