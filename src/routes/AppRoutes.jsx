@@ -42,7 +42,6 @@ import CreateProduct from "../pages/products/CreateProduct";
 import EditProduct from "../pages/products/EditProduct";
 import ImportProducts from "../pages/products/ImportProducts";
 
-
 import Inventory from "../pages/inventory/Inventory";
 
 // ======================================================
@@ -142,6 +141,8 @@ import EditCampaign from "../pages/marketing/EditCampaign";
 import CategoryManagement from "../pages/products/CategoryManagement";
 import CampaignView from "../pages/marketing/CampaignView";
 import PublicWebsite from "../pages/website/PublicWebsite";
+import Subscription from "../pages/business/Subscription";
+import EditAutomation from "../pages/marketing/EditAutomation";
 
 // ======================================================
 // LOADING SCREEN
@@ -275,6 +276,8 @@ const AppRoutes = () => {
       ================================================== */}
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/subscription" element={<Subscription />} />
+
         <Route element={<AdminLayout />}>
           {/* ==================================================
               BUSINESS
@@ -348,7 +351,7 @@ const AppRoutes = () => {
           ------------------------------ */}
 
           <Route path="/website/create" element={<CreateWebsite />} />
-        
+
           {/* ------------------------------
               WEBSITE OVERVIEW
           ------------------------------ */}
@@ -442,6 +445,11 @@ const AppRoutes = () => {
             path="/marketing/automation/create"
             element={<CreateAutomation />}
           />
+          <Route
+            path="/marketing/automation/:id/edit"
+            element={<EditAutomation />}
+          />
+
           <Route path="/marketing/templates" element={<MarketingTemplates />} />
 
           <Route

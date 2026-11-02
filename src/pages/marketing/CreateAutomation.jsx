@@ -1,1743 +1,2116 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  Panel,
-  Handle,
-  Position,
-  MarkerType,
-  addEdge,
-  useNodesState,
-  useEdgesState,
-  useReactFlow,
-  ReactFlowProvider,
-} from "@xyflow/react";
-
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  Bot,
-  Check,
-  ChevronDown,
-  Clock3,
-  Code2,
-  Copy,
-  Database,
-  GitBranch,
-  Globe,
-  Mail,
-  MessageCircle,
-  MoreHorizontal,
-  MousePointer2,
-  Play,
   Plus,
   Save,
-  Search,
-  Settings2,
-  Trash2,
-  UserPlus,
-  Users,
-  Webhook,
-  X,
+  Play,
   Zap,
+  Users,
+  Mail,
+  MessageCircle,
+  Smartphone,
   Bell,
+  Clock,
+  GitBranch,
+  Tag,
+  ListTodo,
+  CircleDot,
+  Trash2,
+  X,
+  Settings2,
+  Workflow,
+  MoreHorizontal,
+  MousePointer2,
+  Check,
+  Eye,
+  Image,
+  Loader2,
   RefreshCw,
-  Filter,
-  ListChecks,
-  FileText,
-  CircleHelp,
-  CheckCircle2,
-  AlertCircle,
+  Paperclip,
 } from "lucide-react";
 
-import "@xyflow/react/dist/style.css";
+import automationApi from "../../api/automation.api";
+import teamApi from "../../api/team.api";
+import marketingTemplateApi from "../../api/marketingTemplate.api";
+import MediaManager from "../../components/media/MediaManager";
 
-/* =========================================================
-   CONSTANTS
-========================================================= */
+// ======================================================
+// CONSTANTS
+// ======================================================
 
-const STORAGE_KEY = "avstomart-automation-draft";
-
-const NODE_TYPES = {
-  trigger: "trigger",
-  action: "action",
-  condition: "condition",
-  delay: "delay",
-  code: "code",
-};
-
-/* =========================================================
-   ICON MAP
-========================================================= */
-
-const ICONS = {
-  zap: Zap,
-  webhook: Webhook,
-  users: Users,
-  userPlus: UserPlus,
-  message: MessageCircle,
-  mail: Mail,
-  task: ListChecks,
-  database: Database,
-  clock: Clock3,
-  branch: GitBranch,
-  code: Code2,
-  bell: Bell,
-  globe: Globe,
-  bot: Bot,
-  filter: Filter,
-};
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-const getIcon = (iconKey) => {
-  return ICONS[iconKey] || Zap;
-};
-
-const createId = () => {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-};
-
-const defaultNodeData = {
-  trigger: {
-    label: "Lead Created",
-    description: "Starts when a new lead is created",
-    iconKey: "users",
-    color: "emerald",
-    category: "Trigger",
-    config: {
-      event: "lead.created",
-    },
-  },
-
-  action: {
-    label: "Send WhatsApp",
-    description: "Send a WhatsApp message",
-    iconKey: "message",
-    color: "green",
-    category: "Action",
-    config: {
-      recipient: "{{lead.phone}}",
-      message:
-        "Hi {{lead.name}}, thank you for your interest. How can we help you?",
-    },
-  },
-
-  condition: {
-    label: "IF Condition",
-    description: "Check a condition and branch",
-    iconKey: "branch",
-    color: "amber",
-    category: "Logic",
-    config: {
-      field: "lead.status",
-      operator: "equals",
-      value: "new",
-    },
-  },
-
-  delay: {
-    label: "Wait",
-    description: "Wait before continuing",
-    iconKey: "clock",
-    color: "violet",
-    category: "Action",
-    config: {
-      duration: 1,
-      unit: "hours",
-    },
-  },
-
-  code: {
-    label: "Code",
-    description: "Run custom JavaScript",
-    iconKey: "code",
-    color: "slate",
-    category: "Action",
-    config: {
-      code: `// Write your JavaScript here
-
-return {
-  success: true
-};`,
-    },
-  },
-};
-
-/* =========================================================
-   NODE CATALOG
-========================================================= */
-
-const NODE_CATALOG = [
+const triggers = [
   {
-    id: "lead-created",
-    type: "trigger",
+    type: "lead_created",
     label: "Lead Created",
+    icon: Users,
     description: "When a new lead is created",
-    iconKey: "users",
-    color: "emerald",
-    category: "Triggers",
   },
   {
-    id: "form-submitted",
-    type: "trigger",
-    label: "Form Submitted",
-    description: "When a website form is submitted",
-    iconKey: "file",
-    color: "blue",
-    category: "Triggers",
+    type: "lead_updated",
+    label: "Lead Updated",
+    icon: Users,
+    description: "When lead information changes",
   },
   {
-    id: "webhook",
-    type: "trigger",
-    label: "Webhook",
-    description: "Receive an HTTP webhook",
-    iconKey: "webhook",
-    color: "orange",
-    category: "Triggers",
+    type: "lead_assigned",
+    label: "Lead Assigned",
+    icon: Users,
+    description: "When a lead is assigned",
   },
   {
-    id: "send-whatsapp",
-    type: "action",
-    label: "Send WhatsApp",
-    description: "Send WhatsApp message",
-    iconKey: "message",
-    color: "green",
-    category: "Actions",
+    type: "lead_status_changed",
+    label: "Lead Status Changed",
+    icon: CircleDot,
+    description: "When lead status changes",
   },
   {
-    id: "send-email",
-    type: "action",
-    label: "Send Email",
-    description: "Send an email",
-    iconKey: "mail",
-    color: "blue",
-    category: "Actions",
+    type: "order_created",
+    label: "Order Created",
+    icon: Zap,
+    description: "When a new order is created",
   },
   {
-    id: "create-task",
-    type: "action",
-    label: "Create Task",
-    description: "Create a CRM task",
-    iconKey: "task",
-    color: "indigo",
-    category: "Actions",
+    type: "deal_created",
+    label: "Deal Created",
+    icon: Workflow,
+    description: "When a deal is created",
   },
+];
+
+const actions = [
   {
-    id: "assign-lead",
-    type: "action",
+    type: "assign",
     label: "Assign Lead",
+    icon: Users,
     description: "Assign lead to a team member",
-    iconKey: "userPlus",
-    color: "purple",
-    category: "Actions",
+    color: "blue",
   },
   {
-    id: "update-lead",
-    type: "action",
-    label: "Update Lead",
-    description: "Update lead fields",
-    iconKey: "database",
-    color: "cyan",
-    category: "Actions",
-  },
-  {
-    id: "notification",
-    type: "action",
+    type: "notification",
     label: "Notification",
-    description: "Send internal notification",
-    iconKey: "bell",
-    color: "yellow",
-    category: "Actions",
+    icon: Bell,
+    description: "Create in-app notification",
+    color: "violet",
   },
   {
-    id: "wait",
+    type: "task",
+    label: "Create Task",
+    icon: ListTodo,
+    description: "Create a follow-up task",
+    color: "cyan",
+  },
+  {
+    type: "tag",
+    label: "Add Tag",
+    icon: Tag,
+    description: "Add a lead tag",
+    color: "amber",
+  },
+  {
+    type: "status",
+    label: "Change Status",
+    icon: CircleDot,
+    description: "Update lead status",
+    color: "emerald",
+  },
+  {
     type: "delay",
     label: "Wait",
-    description: "Wait before next step",
-    iconKey: "clock",
-    color: "violet",
-    category: "Actions",
-  },
-  {
-    id: "if-condition",
-    type: "condition",
-    label: "IF Condition",
-    description: "Create true / false branches",
-    iconKey: "branch",
-    color: "amber",
-    category: "Logic",
-  },
-  {
-    id: "code",
-    type: "code",
-    label: "Code",
-    description: "Run custom JavaScript",
-    iconKey: "code",
+    icon: Clock,
+    description: "Wait before next action",
     color: "slate",
-    category: "Actions",
   },
-];
-
-/* =========================================================
-   COLOR HELPERS
-========================================================= */
-
-const colorMap = {
-  emerald: {
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-    icon: "bg-emerald-100 text-emerald-600",
-    text: "text-emerald-700",
-  },
-  blue: {
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    icon: "bg-blue-100 text-blue-600",
-    text: "text-blue-700",
-  },
-  green: {
-    bg: "bg-green-50",
-    border: "border-green-200",
-    icon: "bg-green-100 text-green-600",
-    text: "text-green-700",
-  },
-  orange: {
-    bg: "bg-orange-50",
-    border: "border-orange-200",
-    icon: "bg-orange-100 text-orange-600",
-    text: "text-orange-700",
-  },
-  indigo: {
-    bg: "bg-indigo-50",
-    border: "border-indigo-200",
-    icon: "bg-indigo-100 text-indigo-600",
-    text: "text-indigo-700",
-  },
-  purple: {
-    bg: "bg-purple-50",
-    border: "border-purple-200",
-    icon: "bg-purple-100 text-purple-600",
-    text: "text-purple-700",
-  },
-  cyan: {
-    bg: "bg-cyan-50",
-    border: "border-cyan-200",
-    icon: "bg-cyan-100 text-cyan-600",
-    text: "text-cyan-700",
-  },
-  yellow: {
-    bg: "bg-yellow-50",
-    border: "border-yellow-200",
-    icon: "bg-yellow-100 text-yellow-600",
-    text: "text-yellow-700",
-  },
-  violet: {
-    bg: "bg-violet-50",
-    border: "border-violet-200",
-    icon: "bg-violet-100 text-violet-600",
-    text: "text-violet-700",
-  },
-  amber: {
-    bg: "bg-amber-50",
-    border: "border-amber-200",
-    icon: "bg-amber-100 text-amber-600",
-    text: "text-amber-700",
-  },
-  slate: {
-    bg: "bg-slate-50",
-    border: "border-slate-200",
-    icon: "bg-slate-100 text-slate-600",
-    text: "text-slate-700",
-  },
-};
-
-/* =========================================================
-   INITIAL WORKFLOW
-========================================================= */
-
-const initialNodes = [
   {
-    id: "trigger-1",
-    type: "automationNode",
-    position: {
-      x: 100,
-      y: 220,
-    },
-    data: {
-      ...defaultNodeData.trigger,
-      nodeType: "trigger",
-    },
+    type: "condition",
+    label: "If / Condition",
+    icon: GitBranch,
+    description: "Check a condition",
+    color: "purple",
+  },
+  {
+    type: "email",
+    label: "Send Email",
+    icon: Mail,
+    description: "Send an email",
+    color: "red",
+  },
+  {
+    type: "whatsapp",
+    label: "WhatsApp",
+    icon: MessageCircle,
+    description: "Send WhatsApp message",
+    color: "green",
+  },
+  {
+    type: "sms",
+    label: "Send SMS",
+    icon: Smartphone,
+    description: "Send SMS message",
+    color: "teal",
   },
 ];
 
-const initialEdges = [];
-
-/* =========================================================
-   CUSTOM NODE
-========================================================= */
-
-function AutomationNode({ id, data, selected }) {
-  const Icon = getIcon(data.iconKey);
-  const colors = colorMap[data.color] || colorMap.blue;
-
-  const isCondition = data.nodeType === NODE_TYPES.condition;
-
-  return (
-    <div
-      className={[
-        "relative w-[245px] rounded-xl border bg-white shadow-sm transition-all",
-        selected
-          ? "border-blue-500 shadow-lg shadow-blue-100 ring-2 ring-blue-100"
-          : "border-slate-200 hover:border-slate-300",
-      ].join(" ")}
-    >
-      {/* INPUT */}
-      {data.nodeType !== NODE_TYPES.trigger && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="input"
-          className="!h-3 !w-3 !border-2 !border-white !bg-slate-500"
-        />
-      )}
-
-      {/* HEADER */}
-      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-        <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${colors.icon}`}
-        >
-          <Icon size={18} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-[13px] font-semibold text-slate-800">
-              {data.label}
-            </p>
-
-            {data.nodeType === NODE_TYPES.trigger && (
-              <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600">
-                TRIGGER
-              </span>
-            )}
-          </div>
-
-          <p className="mt-0.5 truncate text-[11px] text-slate-400">
-            {data.description}
-          </p>
-        </div>
-
-        <MoreHorizontal size={16} className="text-slate-400" />
-      </div>
-
-      {/* BODY */}
-      <div className="px-4 py-3">
-        {data.nodeType === NODE_TYPES.trigger && (
-          <div className="rounded-lg bg-slate-50 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">
-              Event
-            </p>
-
-            <p className="mt-1 text-[11px] font-medium text-slate-700">
-              {data.config?.event || "Select event"}
-            </p>
-          </div>
-        )}
-
-        {data.nodeType === NODE_TYPES.action && (
-          <div className="rounded-lg bg-slate-50 px-3 py-2">
-            <p className="line-clamp-2 text-[11px] text-slate-600">
-              {data.config?.message ||
-                data.config?.subject ||
-                "Configure this action"}
-            </p>
-          </div>
-        )}
-
-        {data.nodeType === NODE_TYPES.delay && (
-          <div className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-violet-700">
-            <Clock3 size={14} />
-            <span className="text-[11px] font-medium">
-              Wait {data.config?.duration || 1} {data.config?.unit || "hours"}
-            </span>
-          </div>
-        )}
-
-        {data.nodeType === NODE_TYPES.condition && (
-          <div className="space-y-2">
-            <div className="rounded-lg bg-amber-50 px-3 py-2">
-              <p className="text-[10px] text-amber-600">IF</p>
-
-              <p className="mt-1 truncate text-[11px] font-medium text-amber-800">
-                {data.config?.field || "field"}{" "}
-                {data.config?.operator || "equals"}{" "}
-                {data.config?.value || "value"}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {data.nodeType === NODE_TYPES.code && (
-          <div className="rounded-lg bg-slate-900 px-3 py-2">
-            <p className="font-mono text-[10px] text-slate-300">JavaScript</p>
-          </div>
-        )}
-      </div>
-
-      {/* CONDITION OUTPUTS */}
-      {isCondition ? (
-        <>
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="true"
-            style={{ top: "38%" }}
-            className="!h-3 !w-3 !border-2 !border-white !bg-emerald-500"
-          />
-
-          <div className="absolute -right-[47px] top-[calc(38%-7px)] rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600">
-            TRUE
-          </div>
-
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="false"
-            style={{ top: "72%" }}
-            className="!h-3 !w-3 !border-2 !border-white !bg-red-500"
-          />
-
-          <div className="absolute -right-[50px] top-[calc(72%-7px)] rounded bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-600">
-            FALSE
-          </div>
-        </>
-      ) : (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="output"
-          className="!h-3 !w-3 !border-2 !border-white !bg-blue-500"
-        />
-      )}
-    </div>
-  );
-}
-
-/* =========================================================
-   NODE TYPES
-========================================================= */
-
-const nodeTypes = {
-  automationNode: AutomationNode,
+const colorClasses = {
+  blue: "bg-blue-50 text-blue-600 border-blue-200",
+  violet: "bg-violet-50 text-violet-600 border-violet-200",
+  cyan: "bg-cyan-50 text-cyan-600 border-cyan-200",
+  amber: "bg-amber-50 text-amber-600 border-amber-200",
+  emerald: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  slate: "bg-slate-100 text-slate-600 border-slate-200",
+  purple: "bg-purple-50 text-purple-600 border-purple-200",
+  red: "bg-red-50 text-red-600 border-red-200",
+  green: "bg-green-50 text-green-600 border-green-200",
+  teal: "bg-teal-50 text-teal-600 border-teal-200",
 };
 
-/* =========================================================
-   NODE PALETTE ITEM
-========================================================= */
-
-function NodePaletteItem({ node, onClick }) {
-  const Icon = getIcon(node.iconKey);
-  const colors = colorMap[node.color] || colorMap.blue;
-
-  const handleDragStart = (event) => {
-    event.dataTransfer.setData("application/reactflow", JSON.stringify(node));
-
-    event.dataTransfer.effectAllowed = "move";
+const defaultConfig = (type) => {
+  const configs = {
+    assign: { userId: "" },
+    notification: {
+      title: "",
+      message: "",
+      templateId: "",
+      templateName: "",
+    },
+    task: { title: "Follow-up Task", message: "", reminderAt: "" },
+    tag: { tag: "" },
+    status: { status: "new" },
+    delay: { amount: 30, unit: "minutes" },
+    condition: {
+      field: "source",
+      operator: "equals",
+      value: "",
+      falseBehavior: "stop",
+    },
+    email: {
+      subject: "",
+      message: "",
+      templateId: "",
+      templateName: "",
+    },
+    whatsapp: {
+      message: "",
+      header: "",
+      footer: "",
+      buttons: [],
+      language: "",
+      templateId: "",
+      templateName: "",
+      mediaId: "",
+      mediaUrl: "",
+      components: [],
+    },
+    sms: {
+      message: "",
+      templateId: "",
+      templateName: "",
+    },
   };
 
+  return configs[type] || {};
+};
+
+const createNode = (type) => {
+  const item = [...triggers, ...actions].find((x) => x.type === type);
+
+  return {
+    id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    type,
+    title: item?.label || type,
+    config: defaultConfig(type),
+    isActive: true,
+  };
+};
+
+const getNodeInfo = (type) =>
+  [...triggers, ...actions].find((item) => item.type === type);
+
+// ======================================================
+// TEMPLATE HELPERS
+// ======================================================
+
+const unwrapTemplates = (response) => {
+  const result =
+    response?.data?.data ??
+    response?.data?.templates ??
+    response?.data ??
+    response?.templates ??
+    response;
+
+  return Array.isArray(result) ? result : [];
+};
+
+const getWhatsAppData = (template) => {
+  return template?.whatsapp || template?.content?.whatsapp || {};
+};
+
+const getTemplateName = (template) => {
+  const whatsapp = getWhatsAppData(template);
+
   return (
-    <button
-      type="button"
-      draggable
-      onDragStart={handleDragStart}
-      onClick={() => onClick(node)}
-      className="group flex w-full items-center gap-3 rounded-lg border border-transparent px-2.5 py-2 text-left transition hover:border-slate-200 hover:bg-slate-50"
-    >
-      <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${colors.icon}`}
-      >
-        <Icon size={15} />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] font-medium text-slate-700">
-          {node.label}
-        </p>
-
-        <p className="truncate text-[10px] text-slate-400">
-          {node.description}
-        </p>
-      </div>
-
-      <Plus
-        size={14}
-        className="shrink-0 text-slate-300 opacity-0 transition group-hover:opacity-100"
-      />
-    </button>
+    whatsapp?.name ||
+    template?.name ||
+    template?.title ||
+    template?.templateName ||
+    "Untitled Template"
   );
-}
+};
 
-/* =========================================================
-   INSPECTOR
-========================================================= */
+const getTemplateLanguage = (template) => {
+  const whatsapp = getWhatsAppData(template);
 
-function NodeInspector({ node, onClose, onChange, onDelete, onDuplicate }) {
-  if (!node) {
+  return (
+    whatsapp?.language || template?.language || whatsapp?.languageCode || "en"
+  );
+};
+
+const getTemplateComponents = (template) => {
+  const whatsapp = getWhatsAppData(template);
+
+  const components =
+    whatsapp?.components ||
+    template?.components ||
+    template?.content?.components ||
+    [];
+
+  return Array.isArray(components) ? components : [];
+};
+
+const getComponentText = (component) => {
+  if (!component) return "";
+
+  if (typeof component === "string") return component;
+
+  return component?.text || component?.body || component?.content || "";
+};
+
+const getWhatsAppParts = (template) => {
+  const components = getTemplateComponents(template);
+
+  const header = components.find(
+    (item) => item?.type?.toUpperCase() === "HEADER",
+  );
+
+  const body = components.find((item) => item?.type?.toUpperCase() === "BODY");
+
+  const footer = components.find(
+    (item) => item?.type?.toUpperCase() === "FOOTER",
+  );
+
+  const buttonsComponent = components.find(
+    (item) => item?.type?.toUpperCase() === "BUTTONS",
+  );
+
+  const buttons = Array.isArray(buttonsComponent?.buttons)
+    ? buttonsComponent.buttons
+    : [];
+
+  const mediaFormat = header?.format || "";
+  const mediaExample =
+    header?.example?.header_handle?.[0] || header?.example?.header_url || "";
+
+  return {
+    header: getComponentText(header),
+    message:
+      getComponentText(body) ||
+      template?.body?.text ||
+      template?.body ||
+      template?.content?.body ||
+      template?.content?.text ||
+      template?.message ||
+      "",
+    footer: getComponentText(footer),
+    buttons,
+    mediaFormat,
+    mediaExample,
+  };
+};
+
+const getTemplateChannel = (template) => {
+  const whatsapp = getWhatsAppData(template);
+
+  const raw = [
+    template?.channel,
+    template?.type,
+    template?.platform,
+    template?.provider,
+    template?.category,
+    template?.templateType,
+    whatsapp?.name ? "whatsapp" : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (raw.includes("whatsapp")) return "whatsapp";
+  if (raw.includes("email")) return "email";
+  if (raw.includes("sms")) return "sms";
+  if (raw.includes("notification") || raw.includes("push")) {
+    return "notification";
+  }
+
+  return "";
+};
+
+const getEmailParts = (template) => {
+  const email = template?.email || template?.content?.email || {};
+
+  return {
+    subject:
+      email?.subject || template?.subject || template?.content?.subject || "",
+    message:
+      email?.body ||
+      email?.message ||
+      template?.body?.text ||
+      template?.body ||
+      template?.content?.body ||
+      template?.content?.text ||
+      template?.message ||
+      "",
+  };
+};
+
+const getSimpleMessage = (template) => {
+  return (
+    template?.message ||
+    template?.body?.text ||
+    template?.body ||
+    template?.content?.message ||
+    template?.content?.body ||
+    template?.content?.text ||
+    ""
+  );
+};
+
+const replaceVariables = (value = "") => {
+  return String(value)
+    .replace(/{{name}}/gi, "John Smith")
+    .replace(/{{companyName}}/gi, "AvstoMart")
+    .replace(/{{email}}/gi, "john@example.com")
+    .replace(/{{phone}}/gi, "+91 9876543210");
+};
+
+// ======================================================
+// PREVIEW COMPONENT
+// ======================================================
+
+function TemplatePreview({ type, config }) {
+  const c = config || {};
+
+  if (type === "email") {
     return (
-      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-          <MousePointer2 size={20} className="text-slate-400" />
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="border-b bg-slate-50 p-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <Mail size={15} className="text-indigo-600" />
+            Email Preview
+          </div>
         </div>
 
-        <p className="text-sm font-semibold text-slate-700">Select a node</p>
+        <div className="p-4">
+          <p className="text-[10px] text-slate-400">Subject</p>
+          <p className="mb-4 text-sm font-bold text-slate-800">
+            {replaceVariables(c.subject) || "Email subject"}
+          </p>
 
-        <p className="mt-1 text-xs leading-5 text-slate-400">
-          Click any node on the canvas to configure its settings.
+          <div className="min-h-[130px] whitespace-pre-wrap text-xs leading-6 text-slate-600">
+            {replaceVariables(c.message) || "Email content preview"}
+          </div>
+
+          <div className="mt-4 border-t pt-3 text-[10px] text-slate-400">
+            Sent using AvstoMart
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "whatsapp") {
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#e5ddd5]">
+        <div className="flex items-center gap-2 bg-[#075e54] p-3 text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+            <MessageCircle size={16} />
+          </div>
+          <div>
+            <p className="text-xs font-bold">Your Business</p>
+            <p className="text-[10px] text-white/70">WhatsApp Preview</p>
+          </div>
+        </div>
+
+        <div className="min-h-[180px] p-3">
+          <div className="ml-auto max-w-[90%] rounded-xl rounded-tr-none bg-[#dcf8c6] p-3 shadow-sm">
+            {c.mediaUrl && (
+              <img
+                src={c.mediaUrl}
+                alt="WhatsApp media"
+                className="mb-2 max-h-36 w-full rounded-lg object-cover"
+              />
+            )}
+
+            {c.header && (
+              <p className="mb-2 text-xs font-bold text-slate-800">
+                {replaceVariables(c.header)}
+              </p>
+            )}
+
+            <p className="whitespace-pre-wrap text-xs leading-5 text-slate-700">
+              {replaceVariables(c.message) || "WhatsApp message preview"}
+            </p>
+
+            {c.footer && (
+              <p className="mt-2 text-[10px] text-slate-500">
+                {replaceVariables(c.footer)}
+              </p>
+            )}
+
+            <p className="mt-2 text-right text-[9px] text-slate-400">
+              10:30 AM ✓✓
+            </p>
+          </div>
+
+          {Array.isArray(c.buttons) && c.buttons.length > 0 && (
+            <div className="ml-auto mt-2 max-w-[90%] space-y-1">
+              {c.buttons.map((button, index) => (
+                <div
+                  key={index}
+                  className="rounded-lg bg-white p-2 text-center text-xs font-semibold text-[#168c80]"
+                >
+                  {button?.text || button?.title || button?.type || "Button"}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "sms") {
+    return (
+      <div className="mx-auto max-w-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b bg-slate-50 p-3 text-center">
+          <p className="text-xs font-bold text-slate-700">Messages</p>
+          <p className="text-[10px] text-slate-400">SMS Preview</p>
+        </div>
+
+        <div className="min-h-[160px] bg-white p-4">
+          <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-slate-100 p-3">
+            <p className="whitespace-pre-wrap text-xs leading-5 text-slate-700">
+              {replaceVariables(c.message) || "SMS message preview"}
+            </p>
+          </div>
+          <p className="mt-2 text-[9px] text-slate-400">Now</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "notification") {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <Bell size={17} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-800">AvstoMart</p>
+            <p className="text-[10px] text-slate-400">Just now</p>
+          </div>
+        </div>
+
+        <p className="text-sm font-bold text-slate-800">
+          {replaceVariables(c.title) || "Notification title"}
+        </p>
+
+        <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+          {replaceVariables(c.message) || "Notification message preview"}
         </p>
       </div>
     );
   }
 
-  const updateConfig = (key, value) => {
-    onChange({
-      ...node.data,
-      config: {
-        ...node.data.config,
-        [key]: value,
-      },
-    });
-  };
-
-  const updateData = (key, value) => {
-    onChange({
-      ...node.data,
-      [key]: value,
-    });
-  };
-
-  const renderTriggerSettings = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="Trigger Event">
-          <select
-            value={node.data.config?.event || ""}
-            onChange={(e) => updateConfig("event", e.target.value)}
-            className="input"
-          >
-            <option value="lead.created">Lead Created</option>
-            <option value="lead.updated">Lead Updated</option>
-            <option value="lead.status_changed">Lead Status Changed</option>
-            <option value="form.submitted">Form Submitted</option>
-            <option value="order.created">Order Created</option>
-            <option value="webhook.received">Webhook Received</option>
-          </select>
-        </Field>
-
-        <InfoBox>
-          This trigger starts the automation whenever the selected event occurs.
-        </InfoBox>
-      </div>
-    );
-  };
-
-  const renderWhatsAppSettings = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="Recipient">
-          <input
-            value={node.data.config?.recipient || ""}
-            onChange={(e) => updateConfig("recipient", e.target.value)}
-            placeholder="{{lead.phone}}"
-            className="input"
-          />
-        </Field>
-
-        <Field label="Message">
-          <textarea
-            value={node.data.config?.message || ""}
-            onChange={(e) => updateConfig("message", e.target.value)}
-            rows={7}
-            className="input resize-none"
-            placeholder="Write your WhatsApp message..."
-          />
-        </Field>
-
-        <VariableHint />
-      </div>
-    );
-  };
-
-  const renderEmailSettings = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="To">
-          <input
-            value={node.data.config?.recipient || ""}
-            onChange={(e) => updateConfig("recipient", e.target.value)}
-            placeholder="{{lead.email}}"
-            className="input"
-          />
-        </Field>
-
-        <Field label="Subject">
-          <input
-            value={node.data.config?.subject || ""}
-            onChange={(e) => updateConfig("subject", e.target.value)}
-            placeholder="Welcome to our business"
-            className="input"
-          />
-        </Field>
-
-        <Field label="Email Body">
-          <textarea
-            value={node.data.config?.body || ""}
-            onChange={(e) => updateConfig("body", e.target.value)}
-            rows={8}
-            className="input resize-none"
-            placeholder="Write your email..."
-          />
-        </Field>
-
-        <VariableHint />
-      </div>
-    );
-  };
-
-  const renderConditionSettings = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="Field">
-          <input
-            value={node.data.config?.field || ""}
-            onChange={(e) => updateConfig("field", e.target.value)}
-            placeholder="lead.status"
-            className="input"
-          />
-        </Field>
-
-        <Field label="Operator">
-          <select
-            value={node.data.config?.operator || "equals"}
-            onChange={(e) => updateConfig("operator", e.target.value)}
-            className="input"
-          >
-            <option value="equals">Equals</option>
-            <option value="not_equals">Does not equal</option>
-            <option value="contains">Contains</option>
-            <option value="not_contains">Does not contain</option>
-            <option value="greater_than">Greater than</option>
-            <option value="less_than">Less than</option>
-            <option value="exists">Exists</option>
-            <option value="not_exists">Does not exist</option>
-          </select>
-        </Field>
-
-        <Field label="Value">
-          <input
-            value={node.data.config?.value || ""}
-            onChange={(e) => updateConfig("value", e.target.value)}
-            placeholder="new"
-            className="input"
-          />
-        </Field>
-
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <div className="flex gap-2">
-            <GitBranch size={15} className="mt-0.5 text-amber-600" />
-
-            <div>
-              <p className="text-[11px] font-semibold text-amber-800">
-                Branching
-              </p>
-
-              <p className="mt-1 text-[10px] leading-4 text-amber-700">
-                TRUE and FALSE outputs can be connected to different actions.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDelaySettings = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="Duration">
-          <input
-            type="number"
-            min="1"
-            value={node.data.config?.duration || 1}
-            onChange={(e) => updateConfig("duration", Number(e.target.value))}
-            className="input"
-          />
-        </Field>
-
-        <Field label="Unit">
-          <select
-            value={node.data.config?.unit || "hours"}
-            onChange={(e) => updateConfig("unit", e.target.value)}
-            className="input"
-          >
-            <option value="minutes">Minutes</option>
-            <option value="hours">Hours</option>
-            <option value="days">Days</option>
-            <option value="weeks">Weeks</option>
-          </select>
-        </Field>
-      </div>
-    );
-  };
-
-  const renderCodeSettings = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="JavaScript">
-          <textarea
-            value={node.data.config?.code || ""}
-            onChange={(e) => updateConfig("code", e.target.value)}
-            rows={15}
-            spellCheck={false}
-            className="w-full resize-none rounded-lg border border-slate-200 bg-slate-950 px-3 py-3 font-mono text-[11px] leading-5 text-slate-200 outline-none focus:border-blue-500"
-          />
-        </Field>
-
-        <InfoBox>
-          Return an object from your code to pass data to the next node.
-        </InfoBox>
-      </div>
-    );
-  };
-
-  const renderGenericAction = () => {
-    return (
-      <div className="space-y-4">
-        <Field label="Action Name">
-          <input
-            value={node.data.label || ""}
-            onChange={(e) => updateData("label", e.target.value)}
-            className="input"
-          />
-        </Field>
-
-        <Field label="Description">
-          <textarea
-            value={node.data.description || ""}
-            onChange={(e) => updateData("description", e.target.value)}
-            rows={4}
-            className="input resize-none"
-          />
-        </Field>
-
-        <InfoBox>
-          Configure the action parameters for this workflow step.
-        </InfoBox>
-      </div>
-    );
-  };
-
-  const getSettings = () => {
-    if (node.data.nodeType === "trigger") {
-      return renderTriggerSettings();
-    }
-
-    if (
-      node.data.iconKey === "message" ||
-      node.data.label === "Send WhatsApp"
-    ) {
-      return renderWhatsAppSettings();
-    }
-
-    if (node.data.iconKey === "mail" || node.data.label === "Send Email") {
-      return renderEmailSettings();
-    }
-
-    if (node.data.nodeType === "condition") {
-      return renderConditionSettings();
-    }
-
-    if (node.data.nodeType === "delay") {
-      return renderDelaySettings();
-    }
-
-    if (node.data.nodeType === "code") {
-      return renderCodeSettings();
-    }
-
-    return renderGenericAction();
-  };
-
-  const colors = colorMap[node.data.color] || colorMap.blue;
-
-  const Icon = getIcon(node.data.iconKey);
-
-  return (
-    <div className="flex h-full flex-col bg-white">
-      {/* INSPECTOR HEADER */}
-      <div className="flex h-[58px] shrink-0 items-center gap-3 border-b border-slate-200 px-4">
-        <div
-          className={`flex h-8 w-8 items-center justify-center rounded-lg ${colors.icon}`}
-        >
-          <Icon size={16} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-semibold text-slate-800">
-            {node.data.label}
-          </p>
-
-          <p className="text-[10px] text-slate-400">{node.data.category}</p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* INSPECTOR BODY */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="mb-5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Configuration
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">
-            Configure how this step behaves.
-          </p>
-        </div>
-
-        {getSettings()}
-      </div>
-
-      {/* INSPECTOR FOOTER */}
-      <div className="shrink-0 border-t border-slate-200 p-3">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onDuplicate}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            <Copy size={14} />
-            Duplicate
-          </button>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
-          >
-            <Trash2 size={14} />
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
-/* =========================================================
-   SMALL COMPONENTS
-========================================================= */
+// ======================================================
+// MAIN COMPONENT
+// ======================================================
 
-function Field({ label, children }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[11px] font-medium text-slate-600">
-        {label}
-      </label>
+export default function CreateAutomation() {
+  const navigate = useNavigate();
 
-      {children}
-    </div>
-  );
-}
+  const [name, setName] = useState("My Workflow");
+  const [description, setDescription] = useState("");
+  const [trigger, setTrigger] = useState(null);
+  const [nodes, setNodes] = useState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [panel, setPanel] = useState("trigger");
 
-function InfoBox({ children }) {
-  return (
-    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
-      <div className="flex gap-2">
-        <CircleHelp size={14} className="mt-0.5 shrink-0 text-blue-500" />
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-        <p className="text-[10px] leading-4 text-blue-700">{children}</p>
-      </div>
-    </div>
-  );
-}
+  const [showPicker, setShowPicker] = useState(false);
 
-function VariableHint() {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <p className="text-[10px] font-semibold text-slate-500">
-        Available variables
-      </p>
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
 
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {[
-          "{{lead.name}}",
-          "{{lead.email}}",
-          "{{lead.phone}}",
-          "{{lead.company}}",
-        ].map((item) => (
-          <span
-            key={item}
-            className="rounded bg-white px-1.5 py-1 font-mono text-[9px] text-slate-500"
-          >
-            {item}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+  const [templates, setTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateError, setTemplateError] = useState("");
 
-/* =========================================================
-   MAIN BUILDER
-========================================================= */
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
 
-function CreateAutomationBuilder() {
-  const reactFlowWrapper = useRef(null);
+  const selected = nodes.find((node) => node.id === selectedNode);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  // ----------------------------------------------------
+  // FETCH TEAM MEMBERS
+  // ----------------------------------------------------
 
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const fetchTeamMembers = async () => {
+    try {
+      setTeamLoading(true);
 
-  const [selectedNodeId, setSelectedNodeId] = useState(null);
+      const response = await teamApi.getTeamMembers();
 
-  const [workflowName, setWorkflowName] = useState("Untitled Automation");
+      const members =
+        response?.data?.members ||
+        response?.data?.users ||
+        response?.members ||
+        response?.users ||
+        response?.data ||
+        [];
 
-  const [description, setDescription] = useState("New marketing automation");
-
-  const [isActive, setIsActive] = useState(false);
-
-  const [search, setSearch] = useState("");
-
-  const [showInspector, setShowInspector] = useState(true);
-
-  const [saved, setSaved] = useState(false);
-
-  const { screenToFlowPosition, fitView } = useReactFlow();
-
-  /* =======================================================
-     SELECTED NODE
-  ======================================================= */
-
-  const selectedNode = useMemo(() => {
-    return nodes.find((node) => node.id === selectedNodeId) || null;
-  }, [nodes, selectedNodeId]);
-
-  /* =======================================================
-     FILTER NODES
-  ======================================================= */
-
-  const filteredCatalog = useMemo(() => {
-    const value = search.trim().toLowerCase();
-
-    if (!value) {
-      return NODE_CATALOG;
+      setTeamMembers(Array.isArray(members) ? members : []);
+    } catch (err) {
+      console.error("Fetch Team Members Error:", err);
+    } finally {
+      setTeamLoading(false);
     }
+  };
 
-    return NODE_CATALOG.filter((node) => {
-      return (
-        node.label.toLowerCase().includes(value) ||
-        node.description.toLowerCase().includes(value) ||
-        node.category.toLowerCase().includes(value)
-      );
-    });
-  }, [search]);
+  // ----------------------------------------------------
+  // FETCH MARKETING TEMPLATES
+  // ----------------------------------------------------
 
-  /* =======================================================
-     CONNECTION
-  ======================================================= */
+  const fetchTemplates = async () => {
+    try {
+      setTemplatesLoading(true);
+      setTemplateError("");
 
-  const onConnect = useCallback(
-    (params) => {
-      setEdges((currentEdges) =>
-        addEdge(
-          {
-            ...params,
-            type: "smoothstep",
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 16,
-              height: 16,
-            },
-            style: {
-              strokeWidth: 1.8,
-            },
-          },
-          currentEdges,
-        ),
-      );
-    },
-    [setEdges],
-  );
-
-  /* =======================================================
-     NODE CLICK
-  ======================================================= */
-
-  const handleNodeClick = useCallback((_, node) => {
-    setSelectedNodeId(node.id);
-    setShowInspector(true);
-  }, []);
-
-  /* =======================================================
-     CANVAS CLICK
-  ======================================================= */
-
-  const handlePaneClick = useCallback(() => {
-    setSelectedNodeId(null);
-  }, []);
-
-  /* =======================================================
-     UPDATE NODE
-  ======================================================= */
-
-  const updateSelectedNode = useCallback(
-    (data) => {
-      if (!selectedNodeId) return;
-
-      setNodes((currentNodes) =>
-        currentNodes.map((node) => {
-          if (node.id !== selectedNodeId) {
-            return node;
-          }
-
-          return {
-            ...node,
-            data,
-          };
-        }),
-      );
-    },
-    [selectedNodeId, setNodes],
-  );
-
-  /* =======================================================
-     DELETE NODE
-  ======================================================= */
-
-  const deleteSelectedNode = useCallback(() => {
-    if (!selectedNodeId) return;
-
-    setNodes((currentNodes) =>
-      currentNodes.filter((node) => node.id !== selectedNodeId),
-    );
-
-    setEdges((currentEdges) =>
-      currentEdges.filter(
-        (edge) =>
-          edge.source !== selectedNodeId && edge.target !== selectedNodeId,
-      ),
-    );
-
-    setSelectedNodeId(null);
-  }, [selectedNodeId, setNodes, setEdges]);
-
-  /* =======================================================
-     DUPLICATE NODE
-  ======================================================= */
-
-  const duplicateSelectedNode = useCallback(() => {
-    if (!selectedNode) return;
-
-    const newId = createId();
-
-    const newNode = {
-      ...selectedNode,
-      id: newId,
-      position: {
-        x: selectedNode.position.x + 320,
-        y: selectedNode.position.y + 80,
-      },
-      selected: false,
-      data: {
-        ...selectedNode.data,
-        config: {
-          ...selectedNode.data.config,
-        },
-      },
-    };
-
-    setNodes((currentNodes) => [
-      ...currentNodes.map((node) => ({
-        ...node,
-        selected: false,
-      })),
-      newNode,
-    ]);
-
-    setSelectedNodeId(newId);
-  }, [selectedNode, setNodes]);
-
-  /* =======================================================
-     ADD NODE
-  ======================================================= */
-
-  const addNode = useCallback(
-    (catalogNode, position = null) => {
-      const lastNode = nodes[nodes.length - 1];
-
-      const nextPosition =
-        position ||
-        (lastNode
-          ? {
-              x: lastNode.position.x + 320,
-              y: lastNode.position.y,
-            }
-          : {
-              x: 100,
-              y: 200,
-            });
-
-      const base = defaultNodeData[catalogNode.type] || defaultNodeData.action;
-
-      const newNode = {
-        id: createId(),
-        type: "automationNode",
-        position: nextPosition,
-        data: {
-          ...base,
-          label: catalogNode.label,
-          description: catalogNode.description,
-          iconKey: catalogNode.iconKey,
-          color: catalogNode.color,
-          category:
-            catalogNode.category === "Logic"
-              ? "Logic"
-              : catalogNode.category.replace(/s$/, ""),
-          nodeType: catalogNode.type,
-          config: {
-            ...(base.config || {}),
-          },
-        },
-      };
-
-      setNodes((currentNodes) => [
-        ...currentNodes.map((node) => ({
-          ...node,
-          selected: false,
-        })),
-        newNode,
-      ]);
-
-      setSelectedNodeId(newNode.id);
-      setShowInspector(true);
-
-      return newNode;
-    },
-    [nodes, setNodes],
-  );
-
-  /* =======================================================
-     AUTO CONNECT
-  ======================================================= */
-
-  const addNodeAndConnect = useCallback(
-    (catalogNode) => {
-      const lastNode = nodes[nodes.length - 1];
-
-      const newNode = addNode(catalogNode);
-
-      if (lastNode && newNode) {
-        setEdges((currentEdges) => [
-          ...currentEdges,
-          {
-            id: `edge-${lastNode.id}-${newNode.id}`,
-            source: lastNode.id,
-            target: newNode.id,
-            sourceHandle:
-              lastNode.data.nodeType === "condition" ? "true" : "output",
-            targetHandle: "input",
-            type: "smoothstep",
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 16,
-              height: 16,
-            },
-            style: {
-              strokeWidth: 1.8,
-            },
-          },
-        ]);
-      }
-    },
-    [nodes, addNode, setEdges],
-  );
-
-  /* =======================================================
-     DRAG OVER
-  ======================================================= */
-
-  const onDragOver = useCallback((event) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  }, []);
-
-  /* =======================================================
-     DROP
-  ======================================================= */
-
-  const onDrop = useCallback(
-    (event) => {
-      event.preventDefault();
-
-      const raw = event.dataTransfer.getData("application/reactflow");
-
-      if (!raw) return;
-
-      let catalogNode;
-
-      try {
-        catalogNode = JSON.parse(raw);
-      } catch {
-        return;
-      }
-
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+      const response = await marketingTemplateApi.getTemplates({
+        page: 1,
+        limit: 1000,
       });
 
-      addNode(catalogNode, position);
-    },
-    [screenToFlowPosition, addNode],
-  );
+      const list = unwrapTemplates(response);
 
-  /* =======================================================
-     SAVE
-  ======================================================= */
+      setTemplates(list);
+    } catch (err) {
+      console.error("Fetch Marketing Templates Error:", err);
 
-  const saveWorkflow = useCallback(() => {
-    const payload = {
-      name: workflowName,
-      description,
-      active: isActive,
-      nodes: nodes.map((node) => ({
-        id: node.id,
-        type: node.type,
-        position: node.position,
-        data: node.data,
-      })),
-      edges,
-      updatedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-
-    setSaved(true);
-
-    window.setTimeout(() => {
-      setSaved(false);
-    }, 2000);
-
-    console.log("Automation saved:", payload);
-  }, [workflowName, description, isActive, nodes, edges]);
-
-  /* =======================================================
-     ACTIVATE
-  ======================================================= */
-
-  const activateWorkflow = useCallback(() => {
-    setIsActive(true);
-
-    const payload = {
-      name: workflowName,
-      description,
-      active: true,
-      nodes,
-      edges,
-      updatedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-
-    console.log("Automation activated:", payload);
-  }, [workflowName, description, nodes, edges]);
-
-  /* =======================================================
-     LOAD DRAFT
-  ======================================================= */
+      setTemplateError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Unable to load marketing templates.",
+      );
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+    fetchTeamMembers();
+    fetchTemplates();
+  }, []);
 
-      if (!stored) return;
+  // ----------------------------------------------------
+  // FILTER TEMPLATES BY CHANNEL
+  // ----------------------------------------------------
 
-      const parsed = JSON.parse(stored);
+  const getTemplatesFor = (type) => {
+    return templates.filter((template) => {
+      const channel = getTemplateChannel(template);
 
-      if (parsed.name) {
-        setWorkflowName(parsed.name);
+      if (channel) return channel === type;
+
+      // WhatsApp templates may have WhatsApp-specific components.
+      if (type === "whatsapp") {
+        return (
+          getTemplateComponents(template).length > 0 &&
+          !!getWhatsAppData(template)
+        );
       }
 
-      if (parsed.description) {
-        setDescription(parsed.description);
-      }
-
-      if (typeof parsed.active === "boolean") {
-        setIsActive(parsed.active);
-      }
-
-      if (Array.isArray(parsed.nodes)) {
-        setNodes(parsed.nodes);
-      }
-
-      if (Array.isArray(parsed.edges)) {
-        setEdges(parsed.edges);
-      }
-    } catch (error) {
-      console.error("Unable to load automation draft", error);
-    }
-  }, [setNodes, setEdges]);
-
-  /* =======================================================
-     FIT VIEW
-  ======================================================= */
-
-  const handleFitView = () => {
-    fitView({
-      padding: 0.2,
-      duration: 400,
+      return false;
     });
   };
 
-  return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-50">
-      {/* ===================================================
-          TOP HEADER
-      =================================================== */}
+  // ----------------------------------------------------
+  // NODE HANDLERS
+  // ----------------------------------------------------
 
-      <header className="flex h-[62px] shrink-0 items-center border-b border-slate-200 bg-white px-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+  const addTrigger = (item) => {
+    setTrigger({
+      ...createNode(item.type),
+      title: item.label,
+    });
+
+    setSelectedNode(null);
+    setPanel("trigger");
+  };
+
+  const addAction = (type) => {
+    const node = createNode(type);
+
+    setNodes((prev) => [...prev, node]);
+    setSelectedNode(node.id);
+    setPanel("node");
+    setShowPicker(false);
+  };
+
+  const updateNode = (id, key, value) => {
+    setNodes((prev) =>
+      prev.map((node) => (node.id === id ? { ...node, [key]: value } : node)),
+    );
+  };
+
+  const updateConfig = (id, key, value) => {
+    setNodes((prev) =>
+      prev.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              config: {
+                ...node.config,
+                [key]: value,
+              },
+            }
+          : node,
+      ),
+    );
+  };
+
+  const updateManyConfig = (id, values) => {
+    setNodes((prev) =>
+      prev.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              config: {
+                ...node.config,
+                ...values,
+              },
+            }
+          : node,
+      ),
+    );
+  };
+
+  const removeNode = (id) => {
+    setNodes((prev) => prev.filter((node) => node.id !== id));
+    setSelectedNode(null);
+    setPanel("trigger");
+  };
+
+  const moveNode = (index, direction) => {
+    const target = index + direction;
+
+    if (target < 0 || target >= nodes.length) return;
+
+    const updated = [...nodes];
+
+    [updated[index], updated[target]] = [updated[target], updated[index]];
+
+    setNodes(updated);
+  };
+
+  // ----------------------------------------------------
+  // SELECT TEMPLATE
+  // ----------------------------------------------------
+
+  const selectTemplate = (node, template) => {
+    const templateId =
+      template?._id || template?.id || template?.templateId || "";
+
+    const templateName = getTemplateName(template);
+
+    if (node.type === "whatsapp") {
+      const parts = getWhatsAppParts(template);
+
+      updateManyConfig(node.id, {
+        templateId,
+        templateName,
+        language: getTemplateLanguage(template),
+        components: getTemplateComponents(template),
+        header: parts.header,
+        message: parts.message,
+        footer: parts.footer,
+        buttons: parts.buttons,
+        mediaFormat: parts.mediaFormat,
+        mediaExample: parts.mediaExample,
+      });
+
+      return;
+    }
+
+    if (node.type === "email") {
+      const parts = getEmailParts(template);
+
+      updateManyConfig(node.id, {
+        templateId,
+        templateName,
+        subject: parts.subject,
+        message: parts.message,
+      });
+
+      return;
+    }
+
+    if (node.type === "sms") {
+      updateManyConfig(node.id, {
+        templateId,
+        templateName,
+        message: getSimpleMessage(template),
+      });
+
+      return;
+    }
+
+    if (node.type === "notification") {
+      updateManyConfig(node.id, {
+        templateId,
+        templateName,
+        title:
+          template?.title || template?.name || template?.content?.title || "",
+        message: getSimpleMessage(template),
+      });
+    }
+  };
+
+  const clearSelectedTemplate = (node) => {
+    updateManyConfig(node.id, {
+      templateId: "",
+      templateName: "",
+    });
+  };
+
+  // ----------------------------------------------------
+  // WHATSAPP MEDIA MANAGER
+  // ----------------------------------------------------
+
+  const handleMediaSelect = async (media) => {
+    if (!selected || selected.type !== "whatsapp") return;
+
+    try {
+      setMediaUploading(true);
+      setError("");
+
+      // MediaManager may return path, url, filePath or fileUrl.
+      const filePath = media?.filePath || media?.path || "";
+      const fileUrl = media?.fileUrl || media?.url || "";
+
+      if (!filePath && !fileUrl) {
+        throw new Error(
+          "Selected media does not contain a file path or file URL.",
+        );
+      }
+
+      const payload = {
+        source: media?.source || "media_manager",
+        id: media?.id || media?._id || "",
+        filePath,
+        fileUrl,
+        name: media?.name || media?.fileName || "",
+        mime: media?.mime || media?.mimeType || media?.type || "",
+        mimeType: media?.mimeType || media?.mime || media?.type || "",
+        size: media?.size || 0,
+      };
+
+      const response =
+        await marketingTemplateApi.uploadMediaToWhatsApp(payload);
+
+      const result = response?.data || response || {};
+      const data = result?.data || result;
+
+      const mediaId = data?.mediaId || data?.id || data?.whatsappMediaId || "";
+
+      const mediaUrl = data?.url || data?.mediaUrl || fileUrl;
+
+      if (!mediaId) {
+        throw new Error("WhatsApp media ID was not returned by the server.");
+      }
+
+      updateManyConfig(selected.id, {
+        mediaId,
+        mediaUrl,
+        mediaName: media?.name || data?.name || "",
+        mediaMime: media?.mime || media?.mimeType || data?.mime || "",
+        mediaPath: filePath,
+      });
+
+      setMediaOpen(false);
+    } catch (err) {
+      console.error("WhatsApp Media Upload Error:", err);
+
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Unable to upload WhatsApp media.",
+      );
+    } finally {
+      setMediaUploading(false);
+    }
+  };
+
+  // ----------------------------------------------------
+  // VALIDATION
+  // ----------------------------------------------------
+
+  const validate = () => {
+    if (!name.trim()) return "Workflow name is required.";
+    if (!trigger) return "Please select a trigger.";
+    if (!nodes.length) return "Please add at least one action.";
+
+    for (const node of nodes) {
+      const c = node.config || {};
+
+      if (node.type === "assign" && !c.userId?.trim()) {
+        return "Please select a team member for Assign Lead.";
+      }
+
+      if (node.type === "tag" && !c.tag?.trim()) {
+        return "Please enter a tag name.";
+      }
+
+      if (
+        node.type === "delay" &&
+        (!Number.isFinite(Number(c.amount)) || Number(c.amount) < 0)
+      ) {
+        return "Please enter a valid delay.";
+      }
+
+      if (
+        ["notification", "task", "email", "whatsapp", "sms"].includes(
+          node.type,
+        ) &&
+        !c.message?.trim()
+      ) {
+        return `Please enter a message for ${node.title}.`;
+      }
+
+      if (node.type === "email" && !c.subject?.trim()) {
+        return "Please enter an email subject.";
+      }
+
+      if (
+        node.type === "condition" &&
+        !["is_empty", "is_not_empty"].includes(c.operator) &&
+        !String(c.value || "").trim()
+      ) {
+        return "Please enter a condition value.";
+      }
+    }
+
+    return "";
+  };
+
+  // ----------------------------------------------------
+  // SAVE WORKFLOW
+  // ----------------------------------------------------
+
+  const saveWorkflow = async (status = "draft") => {
+    setError("");
+
+    const validation = validate();
+
+    if (validation) {
+      setError(validation);
+      return;
+    }
+
+
+    const payload = {
+      name: name.trim(),
+      description,
+      trigger: {
+        event: trigger.type,
+        conditions: [],
+        conditionType: "all",
+      },
+      steps: nodes.map((node, index) => ({
+        id: node.id,
+        type: node.type,
+        title: node.title,
+        order: index,
+        config: node.config,
+        isActive: node.isActive,
+      })),
+      status,
+      timezone: "Asia/Kolkata",
+    };
+
+    try {
+      setSaving(true);
+
+      const response = await automationApi.create(payload);
+
+      if (response?.success) {
+        navigate("/marketing/automation", {
+          state: {
+            message: "Workflow saved successfully.",
+          },
+        });
+      } else {
+        setError(response?.message || "Unable to save workflow.");
+      }
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Unable to save workflow.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ====================================================
+  // TEMPLATE SELECTOR
+  // ====================================================
+
+  const TemplateSelector = ({ node }) => {
+    const c = node.config || {};
+    const availableTemplates = getTemplatesFor(node.type);
+
+    return (
+      <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-800">Select Template</p>
+            <p className="mt-1 text-[10px] text-slate-500">
+              Choose a saved {node.type} template.
+            </p>
+          </div>
+
           <button
             type="button"
-            onClick={() => window.history.back()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+            onClick={fetchTemplates}
+            disabled={templatesLoading}
+            className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:text-indigo-600 disabled:opacity-50"
+            title="Refresh templates"
           >
-            <ArrowLeft size={16} />
+            <RefreshCw
+              size={14}
+              className={templatesLoading ? "animate-spin" : ""}
+            />
           </button>
+        </div>
 
-          <div className="h-6 w-px bg-slate-200" />
+        <select
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none focus:border-indigo-400"
+          value={c.templateId || ""}
+          disabled={templatesLoading}
+          onChange={(e) => {
+            const template = availableTemplates.find(
+              (item) =>
+                String(item?._id || item?.id || item?.templateId) ===
+                e.target.value,
+            );
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+            if (template) {
+              selectTemplate(node, template);
+            } else {
+              clearSelectedTemplate(node);
+            }
+          }}
+        >
+          <option value="">
+            {templatesLoading ? "Loading templates..." : "Select a template"}
+          </option>
+
+          {availableTemplates.map((template, index) => {
+            const id =
+              template?._id ||
+              template?.id ||
+              template?.templateId ||
+              `template-${index}`;
+
+            return (
+              <option key={id} value={id}>
+                {getTemplateName(template)}
+              </option>
+            );
+          })}
+        </select>
+
+        {templateError && (
+          <p className="text-[11px] text-red-600">{templateError}</p>
+        )}
+
+        {!templatesLoading && availableTemplates.length === 0 && (
+          <p className="text-[11px] text-slate-500">
+            No {node.type} templates found.
+          </p>
+        )}
+
+        {c.templateName && (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-100 bg-white p-2.5">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-emerald-700">
+                Selected Template
+              </p>
+              <p className="truncate text-xs font-bold text-slate-700">
+                {c.templateName}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => clearSelectedTemplate(node)}
+              className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+              title="Clear template"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ====================================================
+  // CONFIGURATION
+  // ====================================================
+
+  const renderConfig = (node) => {
+    const c = node.config || {};
+
+    const inputClass =
+      "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
+
+    const Field = ({ label, children }) => (
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-slate-600">{label}</label>
+        {children}
+      </div>
+    );
+
+    switch (node.type) {
+      case "assign":
+        return (
+          <Field label="Assign Team Member">
+            <select
+              className={inputClass}
+              value={c.userId || ""}
+              onChange={(e) => updateConfig(node.id, "userId", e.target.value)}
+              disabled={teamLoading}
+            >
+              <option value="">
+                {teamLoading ? "Loading team members..." : "Select team member"}
+              </option>
+
+              {teamMembers.map((member) => (
+                <option key={member._id} value={member._id}>
+                  {member.name || member.fullName || member.email}
+                  {member.email ? ` (${member.email})` : ""}
+                </option>
+              ))}
+            </select>
+
+            {!teamLoading && teamMembers.length === 0 && (
+              <p className="text-xs text-red-500">No team members found.</p>
+            )}
+          </Field>
+        );
+
+      case "notification":
+        return (
+          <>
+            <TemplateSelector node={node} />
+
+            <Field label="Notification Title">
               <input
-                value={workflowName}
-                onChange={(e) => setWorkflowName(e.target.value)}
-                className="max-w-[300px] border-none bg-transparent p-0 text-sm font-semibold text-slate-800 outline-none"
+                className={inputClass}
+                value={c.title || ""}
+                onChange={(e) => updateConfig(node.id, "title", e.target.value)}
+                placeholder="Notification title"
               />
+            </Field>
 
-              {isActive ? (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600">
-                  <CheckCircle2 size={10} />
-                  ACTIVE
-                </span>
-              ) : (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-500">
-                  DRAFT
-                </span>
+            <Field label="Notification Message">
+              <textarea
+                rows={4}
+                className={inputClass}
+                value={c.message || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "message", e.target.value)
+                }
+                placeholder="Write notification..."
+              />
+            </Field>
+
+            <TemplatePreview type="notification" config={c} />
+          </>
+        );
+
+      case "task":
+        return (
+          <>
+            <Field label="Title">
+              <input
+                className={inputClass}
+                value={c.title || ""}
+                onChange={(e) => updateConfig(node.id, "title", e.target.value)}
+                placeholder="Enter task title"
+              />
+            </Field>
+
+            <Field label="Message">
+              <textarea
+                rows={4}
+                className={inputClass}
+                value={c.message || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "message", e.target.value)
+                }
+                placeholder="Write task details..."
+              />
+            </Field>
+
+            <Field label="Reminder Date">
+              <input
+                type="datetime-local"
+                className={inputClass}
+                value={c.reminderAt || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "reminderAt", e.target.value)
+                }
+              />
+            </Field>
+          </>
+        );
+
+      case "tag":
+        return (
+          <Field label="Tag Name">
+            <input
+              className={inputClass}
+              value={c.tag || ""}
+              onChange={(e) => updateConfig(node.id, "tag", e.target.value)}
+              placeholder="e.g. Hot Lead"
+            />
+          </Field>
+        );
+
+      case "status":
+        return (
+          <Field label="Lead Status">
+            <select
+              className={inputClass}
+              value={c.status || "new"}
+              onChange={(e) => updateConfig(node.id, "status", e.target.value)}
+            >
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="converted">Converted</option>
+              <option value="lost">Lost</option>
+            </select>
+          </Field>
+        );
+
+      case "delay":
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Duration">
+              <input
+                type="number"
+                min="0"
+                className={inputClass}
+                value={c.amount ?? 30}
+                onChange={(e) =>
+                  updateConfig(
+                    node.id,
+                    "amount",
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+              />
+            </Field>
+
+            <Field label="Unit">
+              <select
+                className={inputClass}
+                value={c.unit || "minutes"}
+                onChange={(e) => updateConfig(node.id, "unit", e.target.value)}
+              >
+                <option value="minutes">Minutes</option>
+                <option value="hours">Hours</option>
+                <option value="days">Days</option>
+              </select>
+            </Field>
+          </div>
+        );
+
+      case "condition":
+        return (
+          <>
+            <Field label="Lead Field">
+              <select
+                className={inputClass}
+                value={c.field || "source"}
+                onChange={(e) => updateConfig(node.id, "field", e.target.value)}
+              >
+                <option value="source">Lead Source</option>
+                <option value="status">Lead Status</option>
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+                <option value="name">Name</option>
+                <option value="companyName">Company Name</option>
+              </select>
+            </Field>
+
+            <Field label="Operator">
+              <select
+                className={inputClass}
+                value={c.operator || "equals"}
+                onChange={(e) =>
+                  updateConfig(node.id, "operator", e.target.value)
+                }
+              >
+                <option value="equals">Is</option>
+                <option value="not_equals">Is Not</option>
+                <option value="contains">Contains</option>
+                <option value="not_contains">Does Not Contain</option>
+                <option value="is_empty">Is Empty</option>
+                <option value="is_not_empty">Is Not Empty</option>
+              </select>
+            </Field>
+
+            {!["is_empty", "is_not_empty"].includes(c.operator) && (
+              <Field label="Value">
+                <input
+                  className={inputClass}
+                  value={c.value || ""}
+                  onChange={(e) =>
+                    updateConfig(node.id, "value", e.target.value)
+                  }
+                  placeholder="Enter value"
+                />
+              </Field>
+            )}
+
+            <Field label="When condition fails">
+              <select
+                className={inputClass}
+                value={c.falseBehavior || "stop"}
+                onChange={(e) =>
+                  updateConfig(node.id, "falseBehavior", e.target.value)
+                }
+              >
+                <option value="stop">Stop workflow</option>
+                <option value="skip_next">Skip next action</option>
+              </select>
+            </Field>
+          </>
+        );
+
+      case "email":
+        return (
+          <>
+            <TemplateSelector node={node} />
+
+            <Field label="Email Subject">
+              <input
+                className={inputClass}
+                value={c.subject || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "subject", e.target.value)
+                }
+                placeholder="Email subject"
+              />
+            </Field>
+
+            <Field label="Email Body">
+              <textarea
+                rows={6}
+                className={inputClass}
+                value={c.message || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "message", e.target.value)
+                }
+                placeholder="Write email..."
+              />
+            </Field>
+
+            <TemplatePreview type="email" config={c} />
+          </>
+        );
+
+      case "whatsapp":
+        return (
+          <>
+            <TemplateSelector node={node} />
+
+            <Field label="Template Header">
+              <input
+                className={inputClass}
+                value={c.header || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "header", e.target.value)
+                }
+                placeholder="WhatsApp header"
+              />
+            </Field>
+
+            <Field label="Message Body">
+              <textarea
+                rows={6}
+                className={inputClass}
+                value={c.message || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "message", e.target.value)
+                }
+                placeholder="Write WhatsApp message..."
+              />
+            </Field>
+
+            <Field label="Footer">
+              <input
+                className={inputClass}
+                value={c.footer || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "footer", e.target.value)
+                }
+                placeholder="Footer text"
+              />
+            </Field>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-600">
+                  WhatsApp Media
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setMediaOpen(true)}
+                  disabled={mediaUploading}
+                  className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                >
+                  {mediaUploading ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Image size={13} />
+                  )}
+                  Select Media
+                </button>
+              </div>
+
+              {c.mediaUrl && (
+                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
+                  <img
+                    src={c.mediaUrl}
+                    alt="Selected WhatsApp media"
+                    className="max-h-40 w-full rounded-lg object-contain"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateManyConfig(node.id, {
+                        mediaId: "",
+                        mediaUrl: "",
+                        mediaName: "",
+                      })
+                    }
+                    className="absolute right-3 top-3 rounded-lg bg-white p-1.5 text-red-500 shadow"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+
+                  <p className="mt-2 truncate text-[10px] text-slate-500">
+                    {c.mediaName || "Selected media"}
+                  </p>
+                </div>
+              )}
+
+              {c.mediaId && (
+                <p className="text-[10px] text-emerald-600">
+                  WhatsApp Media ID: {c.mediaId}
+                </p>
               )}
             </div>
 
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-0.5 block w-[350px] max-w-full border-none bg-transparent p-0 text-[10px] text-slate-400 outline-none"
+            {Array.isArray(c.buttons) && c.buttons.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-600">
+                  Template Buttons
+                </label>
+
+                {c.buttons.map((button, index) => (
+                  <div
+                    key={index}
+                    className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700"
+                  >
+                    {button?.text || button?.title || button?.type}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <TemplatePreview type="whatsapp" config={c} />
+          </>
+        );
+
+      case "sms":
+        return (
+          <>
+            <TemplateSelector node={node} />
+
+            <Field label="SMS Message">
+              <textarea
+                rows={6}
+                maxLength={1600}
+                className={inputClass}
+                value={c.message || ""}
+                onChange={(e) =>
+                  updateConfig(node.id, "message", e.target.value)
+                }
+                placeholder="Write SMS message..."
+              />
+            </Field>
+
+            <div className="text-right text-[10px] text-slate-400">
+              {(c.message || "").length} characters
+            </div>
+
+            <TemplatePreview type="sms" config={c} />
+          </>
+        );
+
+      default:
+        return (
+          <p className="text-sm text-slate-400">No configuration required.</p>
+        );
+    }
+  };
+
+  // ====================================================
+  // NODE CARD
+  // ====================================================
+
+  const NodeCard = ({ node, index, isTrigger = false }) => {
+    const info = getNodeInfo(node.type);
+    const Icon = info?.icon || Zap;
+    const color = colorClasses[info?.color || "blue"];
+    const active = selectedNode === node.id;
+
+    return (
+      <div
+        onClick={() => {
+          setSelectedNode(node.id);
+          setPanel(isTrigger ? "trigger" : "node");
+        }}
+        className={`group relative w-[250px] cursor-pointer rounded-xl border bg-white shadow-sm transition hover:shadow-md ${
+          active
+            ? "border-indigo-500 ring-2 ring-indigo-100"
+            : "border-slate-200"
+        }`}
+      >
+        <div className="flex items-center gap-3 p-3.5">
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-lg border ${color}`}
+          >
+            <Icon size={19} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {isTrigger ? "Trigger" : `Action ${index + 1}`}
+            </p>
+
+            <h3 className="truncate text-sm font-bold text-slate-800">
+              {node.title}
+            </h3>
+
+            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+              {info?.description}
+            </p>
+          </div>
+
+          <MoreHorizontal size={17} className="text-slate-400" />
+        </div>
+
+        <div className="flex items-center justify-between border-t border-slate-100 px-3.5 py-2">
+          <span className="flex items-center gap-1.5 text-[10px] text-slate-400">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                node.isActive === false ? "bg-slate-300" : "bg-emerald-500"
+              }`}
             />
+            {node.isActive === false ? "Disabled" : "Configured"}
+          </span>
+
+          {!isTrigger && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                removeNode(node.id);
+              }}
+              className="rounded p-1 text-slate-400 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ====================================================
+  // RENDER
+  // ====================================================
+
+  return (
+    <div className="flex h-screen min-h-[650px] flex-col overflow-hidden bg-slate-50 text-slate-800">
+      {/* TOP TOOLBAR */}
+
+      <header className="z-20 flex h-[65px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/marketing/automations")}
+            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+          >
+            <ArrowLeft size={18} />
+          </button>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <Workflow size={17} className="text-indigo-600" />
+
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-52 border-0 bg-transparent text-sm font-bold outline-none focus:ring-0"
+                placeholder="Workflow name"
+              />
+            </div>
+
+            <p className="pl-6 text-[10px] text-slate-400">
+              AvstoMart Workflow Builder
+            </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {saved && (
-            <span className="mr-2 flex items-center gap-1 text-[11px] text-emerald-600">
-              <Check size={13} />
-              Saved
-            </span>
-          )}
-
+        <div className="flex items-center gap-2">
           <button
-            type="button"
-            onClick={saveWorkflow}
-            className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => saveWorkflow("draft")}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
           >
-            <Save size={14} />
-            Save
+            <Save size={15} />
+            Save Draft
           </button>
 
           <button
-            type="button"
-            onClick={activateWorkflow}
-            className="flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800"
+            onClick={() => saveWorkflow("active")}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
           >
-            <Play size={13} fill="currentColor" />
-            Activate
-          </button>
-
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-          >
-            <MoreHorizontal size={17} />
+            <Play size={14} />
+            {saving ? "Saving..." : "Activate"}
           </button>
         </div>
       </header>
 
-      {/* ===================================================
-          WORKSPACE
-      =================================================== */}
+      {/* WORKSPACE */}
 
-      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-        {/* =================================================
-            LEFT NODE PANEL
-        ================================================= */}
+      <div className="flex min-h-0 flex-1">
+        {/* LEFT SIDEBAR */}
 
-        <aside className="flex h-full w-[270px] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white">
-          <div className="shrink-0 border-b border-slate-200 p-3">
-            <div className="mb-3">
-              <p className="text-xs font-semibold text-slate-800">Add nodes</p>
+        <aside className="z-10 flex w-[250px] shrink-0 flex-col border-r border-slate-200 bg-white">
+          <div className="border-b border-slate-100 p-4">
+            <p className="text-xs font-bold text-slate-800">Workflow Nodes</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Choose a trigger or action.
+            </p>
+          </div>
 
-              <p className="mt-1 text-[10px] text-slate-400">
-                Drag a node onto the canvas or click to add it.
+          <div className="flex-1 overflow-y-auto p-3">
+            <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Triggers
+            </p>
+
+            <div className="space-y-1">
+              {triggers.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.type}
+                    onClick={() => addTrigger(item)}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-indigo-50 ${
+                      trigger?.type === item.type
+                        ? "bg-indigo-50 text-indigo-700"
+                        : "text-slate-600"
+                    }`}
+                  >
+                    <Icon size={16} />
+                    <span className="text-xs font-medium">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="mb-2 mt-6 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Actions
+            </p>
+
+            <div className="space-y-1">
+              {actions.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.type}
+                    onClick={() => addAction(item.type)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    <Icon size={16} />
+                    <span className="text-xs font-medium">{item.label}</span>
+                    <Plus size={13} className="ml-auto" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 p-3">
+            <div className="rounded-lg bg-indigo-50 p-3">
+              <div className="flex items-center gap-2 text-indigo-700">
+                <Zap size={15} />
+                <span className="text-xs font-bold">Workflow Builder</span>
+              </div>
+              <p className="mt-1 text-[10px] leading-4 text-indigo-600">
+                Connect triggers and actions to automate your business.
               </p>
-            </div>
-
-            <div className="relative">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search nodes..."
-                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
-              />
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {filteredCatalog.length === 0 ? (
-              <div className="px-3 py-10 text-center">
-                <Search size={22} className="mx-auto text-slate-300" />
-
-                <p className="mt-2 text-xs font-medium text-slate-500">
-                  No nodes found
-                </p>
-              </div>
-            ) : (
-              <>
-                {["Triggers", "Actions", "Logic"].map((category) => {
-                  const items = filteredCatalog.filter(
-                    (item) => item.category === category,
-                  );
-
-                  if (!items.length) return null;
-
-                  return (
-                    <div key={category} className="mb-4">
-                      <div className="flex items-center justify-between px-2 py-1.5">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                          {category}
-                        </p>
-
-                        <span className="text-[9px] text-slate-300">
-                          {items.length}
-                        </span>
-                      </div>
-
-                      <div className="space-y-0.5">
-                        {items.map((item) => (
-                          <NodePaletteItem
-                            key={item.id}
-                            node={item}
-                            onClick={addNodeAndConnect}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-
-          <div className="shrink-0 border-t border-slate-200 p-3">
-            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
-              <div className="flex gap-2">
-                <Bot size={15} className="mt-0.5 text-blue-500" />
-
-                <div>
-                  <p className="text-[10px] font-semibold text-blue-800">
-                    Automation Builder
-                  </p>
-
-                  <p className="mt-1 text-[9px] leading-4 text-blue-600">
-                    Connect triggers, actions and conditions to build your
-                    workflow.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </aside>
 
-        {/* =================================================
-            CENTER CANVAS
-        ================================================= */}
+        {/* CANVAS */}
 
-        <div
-          ref={reactFlowWrapper}
-          className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
-        >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={handleNodeClick}
-            onPaneClick={handlePaneClick}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            fitView
-            fitViewOptions={{
-              padding: 0.2,
+        <main className="relative min-w-0 flex-1 overflow-auto bg-[#f8fafc]">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-50"
+            style={{
+              backgroundImage: "radial-gradient(#cbd5e1 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
             }}
-            defaultEdgeOptions={{
-              type: "smoothstep",
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-              },
-            }}
-            proOptions={{
-              hideAttribution: true,
-            }}
-            minZoom={0.2}
-            maxZoom={2}
-          >
-            <Background gap={20} size={1} color="#e2e8f0" />
+          />
 
-            <Controls showInteractive={false} className="!m-4" />
-
-            <MiniMap
-              pannable
-              zoomable
-              className="!m-4"
-              nodeColor={(node) => {
-                if (node.data?.nodeType === "trigger") {
-                  return "#10b981";
-                }
-
-                if (node.data?.nodeType === "condition") {
-                  return "#f59e0b";
-                }
-
-                return "#3b82f6";
-              }}
-            />
-
-            {/* CANVAS TOOLBAR */}
-            <Panel position="top-left" className="!left-4 !top-4 !m-0">
-              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={handleFitView}
-                  title="Fit workflow"
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
-                >
-                  <RefreshCw size={14} />
-                </button>
-
-                <div className="h-5 w-px bg-slate-200" />
-
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
-                >
-                  <Settings2 size={14} />
-                </button>
+          <div className="relative mx-auto flex min-h-full min-w-[520px] flex-col items-center px-12 py-12">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm">
+                <MousePointer2 size={18} />
               </div>
-            </Panel>
 
-            {/* DROP HINT */}
-            {nodes.length === 1 && (
-              <Panel position="bottom-center" className="!bottom-8 !m-0">
-                <div className="pointer-events-none rounded-lg border border-dashed border-slate-300 bg-white/90 px-5 py-3 text-center shadow-sm backdrop-blur">
-                  <p className="text-xs font-medium text-slate-600">
-                    Drag a node here to continue
-                  </p>
+              <p className="text-xs font-semibold text-slate-600">
+                Workflow Canvas
+              </p>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Build your automation visually
+              </p>
+            </div>
 
-                  <p className="mt-1 text-[10px] text-slate-400">
-                    Connect your automation steps visually
+            {trigger ? (
+              <>
+                <NodeCard node={trigger} index={0} isTrigger />
+
+                <div className="relative flex h-16 w-px items-center justify-center bg-slate-300">
+                  <button
+                    onClick={() => setShowPicker(true)}
+                    className="absolute z-10 flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 shadow-sm hover:border-indigo-500 hover:text-indigo-600"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setPanel("trigger");
+                  setSelectedNode(null);
+                }}
+                className="flex w-[260px] flex-col items-center rounded-xl border-2 border-dashed border-slate-300 bg-white px-5 py-7 text-center transition hover:border-indigo-400 hover:bg-indigo-50"
+              >
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                  <Zap size={21} />
+                </div>
+
+                <p className="text-sm font-bold text-slate-700">Add Trigger</p>
+
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Choose what starts this workflow
+                </p>
+
+                <span className="mt-4 rounded-md bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white">
+                  Select Trigger
+                </span>
+              </button>
+            )}
+
+            {nodes.map((node, index) => (
+              <React.Fragment key={node.id}>
+                <NodeCard node={node} index={index} />
+
+                <div className="relative flex h-16 w-px items-center justify-center bg-slate-300">
+                  <button
+                    onClick={() => setShowPicker(true)}
+                    className="absolute z-10 flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 shadow-sm hover:border-indigo-500 hover:text-indigo-600"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </React.Fragment>
+            ))}
+
+            {trigger && (
+              <button
+                onClick={() => setShowPicker(true)}
+                className="flex w-[250px] flex-col items-center rounded-xl border-2 border-dashed border-slate-300 bg-white px-4 py-5 text-center transition hover:border-indigo-400 hover:bg-indigo-50"
+              >
+                <Plus size={20} className="mb-2 text-indigo-500" />
+                <span className="text-xs font-bold text-slate-600">
+                  Add Action
+                </span>
+                <span className="mt-1 text-[10px] text-slate-400">
+                  Select the next workflow step
+                </span>
+              </button>
+            )}
+          </div>
+        </main>
+
+        {/* RIGHT CONFIG PANEL */}
+
+        <aside className="z-10 flex w-[350px] shrink-0 flex-col border-l border-slate-200 bg-white">
+          <div className="flex h-[58px] items-center justify-between border-b border-slate-100 px-4">
+            <div className="flex items-center gap-2">
+              <Settings2 size={16} className="text-slate-500" />
+              <span className="text-xs font-bold text-slate-800">
+                Configuration
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                setSelectedNode(null);
+                setPanel("trigger");
+              }}
+              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {panel === "trigger" ? (
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                    <Zap size={19} />
+                  </div>
+
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Trigger Configuration
+                  </h3>
+
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Select the event that starts this workflow.
                   </p>
                 </div>
-              </Panel>
+
+                <div className="space-y-2">
+                  {triggers.map((item) => {
+                    const Icon = item.icon;
+                    const active = trigger?.type === item.type;
+
+                    return (
+                      <button
+                        key={item.type}
+                        onClick={() => addTrigger(item)}
+                        className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition ${
+                          active
+                            ? "border-indigo-400 bg-indigo-50"
+                            : "border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Icon
+                          size={17}
+                          className={
+                            active ? "text-indigo-600" : "text-slate-400"
+                          }
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-700">
+                            {item.label}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {item.description}
+                          </p>
+                        </div>
+
+                        {active && (
+                          <Check size={15} className="text-indigo-600" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Workflow Description
+                  </label>
+
+                  <textarea
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 p-3 text-xs outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Describe your workflow..."
+                  />
+                </div>
+              </div>
+            ) : selected ? (
+              <div className="space-y-5">
+                {(() => {
+                  const info = getNodeInfo(selected.type);
+                  const Icon = info?.icon || Zap;
+
+                  return (
+                    <>
+                      <div>
+                        <div
+                          className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl border ${
+                            colorClasses[info?.color || "blue"]
+                          }`}
+                        >
+                          <Icon size={20} />
+                        </div>
+
+                        <h3 className="text-sm font-bold text-slate-800">
+                          {selected.title}
+                        </h3>
+
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          {info?.description}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-600">
+                          Node Name
+                        </label>
+
+                        <input
+                          value={selected.title}
+                          onChange={(e) =>
+                            updateNode(selected.id, "title", e.target.value)
+                          }
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-indigo-400"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-700">
+                            Enable Node
+                          </p>
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            Run this step in workflow
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() =>
+                            updateNode(
+                              selected.id,
+                              "isActive",
+                              !selected.isActive,
+                            )
+                          }
+                          className={`relative h-5 w-9 rounded-full transition ${
+                            selected.isActive ? "bg-indigo-600" : "bg-slate-300"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${
+                              selected.isActive ? "left-[18px]" : "left-0.5"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Parameters
+                        </p>
+
+                        {renderConfig(selected)}
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <button
+                          onClick={() => {
+                            const index = nodes.findIndex(
+                              (node) => node.id === selected.id,
+                            );
+                            moveNode(index, -1);
+                          }}
+                          className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        >
+                          Move Up
+                        </button>
+
+                        <button
+                          onClick={() => removeNode(selected.id)}
+                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-100 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 size={14} />
+                          Delete Node
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                  <Settings2 size={21} />
+                </div>
+
+                <p className="text-xs font-bold text-slate-600">
+                  No Node Selected
+                </p>
+
+                <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-slate-400">
+                  Select a trigger or action node to configure its settings.
+                </p>
+              </div>
             )}
-          </ReactFlow>
-        </div>
-
-        {/* =================================================
-            RIGHT INSPECTOR
-        ================================================= */}
-
-        {showInspector && (
-          <aside className="h-full w-[320px] shrink-0 overflow-hidden border-l border-slate-200 bg-white">
-            <NodeInspector
-              node={selectedNode}
-              onClose={() => {
-                setShowInspector(false);
-                setSelectedNodeId(null);
-              }}
-              onChange={updateSelectedNode}
-              onDelete={deleteSelectedNode}
-              onDuplicate={duplicateSelectedNode}
-            />
-          </aside>
-        )}
-
-        {/* Inspector toggle */}
-        {!showInspector && (
-          <button
-            type="button"
-            onClick={() => setShowInspector(true)}
-            className="absolute right-4 top-[76px] z-10 flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50"
-          >
-            <Settings2 size={14} />
-            Settings
-          </button>
-        )}
+          </div>
+        </aside>
       </div>
-    </div>
-  );
-}
 
-/* =========================================================
-   PROVIDER WRAPPER
-========================================================= */
+      {/* ACTION PICKER */}
 
-export default function CreateAutomation() {
-  return (
-    <div className="h-full min-h-0 w-full min-w-0 overflow-hidden">
-      <ReactFlowProvider>
-        <CreateAutomationBuilder />
-      </ReactFlowProvider>
+      {showPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
+          onClick={() => setShowPicker(false)}
+        >
+          <div
+            className="w-full max-w-[560px] rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">
+                  Add Workflow Action
+                </h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  Choose an action for your workflow.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowPicker(false)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {actions.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.type}
+                    onClick={() => addAction(item.type)}
+                    className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50"
+                  >
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
+                        colorClasses[item.color]
+                      }`}
+                    >
+                      <Icon size={17} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        {item.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDIA MANAGER */}
+
+      <MediaManager
+        open={mediaOpen}
+        onClose={() => setMediaOpen(false)}
+        onSelect={handleMediaSelect}
+      />
+
+      {/* MEDIA UPLOAD INDICATOR */}
+
+      {mediaUploading && (
+        <div className="fixed bottom-5 right-5 z-[70] flex items-center gap-3 rounded-xl border border-indigo-100 bg-white px-4 py-3 shadow-xl">
+          <Loader2 size={17} className="animate-spin text-indigo-600" />
+          <span className="text-xs font-semibold text-slate-700">
+            Uploading WhatsApp media...
+          </span>
+        </div>
+      )}
+
+      {/* ERROR TOAST */}
+
+      {error && (
+        <div className="fixed bottom-5 left-1/2 z-[80] w-[min(90%,480px)] -translate-x-1/2 rounded-xl border border-red-200 bg-white p-4 shadow-xl">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="text-xs font-bold text-red-600">Workflow Error</p>
+              <p className="mt-1 text-xs text-slate-600">{error}</p>
+            </div>
+
+            <button
+              onClick={() => setError("")}
+              className="text-slate-400 hover:text-slate-700"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
