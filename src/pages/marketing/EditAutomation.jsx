@@ -918,7 +918,7 @@ export default function EditAutomation() {
       <header className="z-20 flex h-[65px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
         <div className="flex min-w-0 items-center gap-4">
           <button
-            onClick={() => navigate("/marketing/automations")}
+            onClick={() => navigate("/marketing/automation")}
             className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
           >
             <ArrowLeft size={18} />

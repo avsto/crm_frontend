@@ -1,5 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+// src/pages/content/Distribution.jsx
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useNavigate } from "react-router-dom";
+
 import {
   AlertCircle,
   ArrowLeft,
@@ -15,9 +19,15 @@ import {
   RefreshCw,
   Search,
   Send,
+  X,
   XCircle,
+  BarChart3,
+  Eye,
+  Radio,
 } from "lucide-react";
+
 import { FaFacebook, FaInstagram, FaLinkedin } from "react-icons/fa";
+
 import distributionApi from "../../api/distribution.api";
 
 // ======================================================
@@ -58,46 +68,55 @@ const CHANNELS = [
 ];
 
 // ======================================================
-// STATUS CONFIG
+// STATUS CONFIGURATION
 // ======================================================
 
 const STATUS_CONFIG = {
   pending: {
     label: "Pending",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
     icon: Clock3,
   },
 
   processing: {
     label: "Processing",
-    className: "bg-blue-50 text-blue-700 border-blue-200",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
     icon: Loader2,
   },
 
   published: {
     label: "Published",
-    className: "bg-green-50 text-green-700 border-green-200",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: CheckCircle2,
   },
 
   failed: {
     label: "Failed",
-    className: "bg-red-50 text-red-700 border-red-200",
+    className: "border-red-200 bg-red-50 text-red-700",
     icon: XCircle,
   },
 
   skipped: {
     label: "Skipped",
-    className: "bg-gray-50 text-gray-600 border-gray-200",
+    className: "border-slate-200 bg-slate-100 text-slate-600",
     icon: AlertCircle,
   },
 
   draft: {
     label: "Draft",
-    className: "bg-gray-50 text-gray-600 border-gray-200",
+    className: "border-slate-200 bg-slate-100 text-slate-600",
     icon: FileText,
   },
 };
+
+const STATUS_OPTIONS = [
+  "pending",
+  "processing",
+  "published",
+  "failed",
+  "skipped",
+  "draft",
+];
 
 // ======================================================
 // HELPERS
@@ -117,7 +136,7 @@ const getStatusConfig = (status) => {
   return (
     STATUS_CONFIG[normalizedStatus] || {
       label: status || "Unknown",
-      className: "bg-gray-50 text-gray-600 border-gray-200",
+      className: "border-slate-200 bg-slate-100 text-slate-600",
       icon: AlertCircle,
     }
   );
@@ -153,34 +172,101 @@ const getChannelByKey = (channel) => {
   );
 };
 
+const getContentId = (content) => {
+  return content?.contentId || content?._id || content?.id;
+};
+
+const getRetryId = (item) => {
+  return item?._id || item?.id || item?.contentId;
+};
+
+const getLogId = (log) => {
+  return log?._id || log?.id;
+};
+
 // ======================================================
 // STATUS BADGE
 // ======================================================
 
-const StatusBadge = ({ status }) => {
+function StatusBadge({ status }) {
   const normalizedStatus = normalizeStatus(status);
   const config = getStatusConfig(status);
   const Icon = config.icon;
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${config.className}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-semibold ${config.className}`}
     >
       <Icon
-        size={13}
+        size={12}
         className={normalizedStatus === "processing" ? "animate-spin" : ""}
       />
 
       {config.label}
     </span>
   );
-};
+}
+
+// ======================================================
+// CHANNEL BADGE
+// ======================================================
+
+function ChannelBadge({ channelKey }) {
+  const channel = getChannelByKey(channelKey);
+  const Icon = channel.icon;
+
+  return (
+    <span className="inline-flex items-center gap-2 text-xs font-semibold mt-heading">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg border mt-divider mt-subtle">
+        <Icon size={14} />
+      </span>
+
+      {channel.label}
+    </span>
+  );
+}
+
+// ======================================================
+// SUMMARY CARD
+// ======================================================
+
+function SummaryCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  iconClass = "",
+}) {
+  return (
+    <div className="mt-card rounded-xl border p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold mt-muted">{title}</p>
+
+          <h3 className="mt-2 text-2xl font-bold tracking-tight mt-heading">
+            {value}
+          </h3>
+
+          <p className="mt-1 text-[10px] mt-muted">{description}</p>
+        </div>
+
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            iconClass || "distribution-stat-icon"
+          }`}
+        >
+          <Icon size={19} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ======================================================
 // CHANNEL STATUS ITEM
 // ======================================================
 
-const ChannelStatusItem = ({ channelKey, data }) => {
+function ChannelStatusItem({ channelKey, data }) {
   const channel = getChannelByKey(channelKey);
   const Icon = channel.icon;
 
@@ -204,19 +290,19 @@ const ChannelStatusItem = ({ channelKey, data }) => {
             : "skipped");
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+    <div className="rounded-xl border mt-divider mt-subtle p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700">
+          <div className="distribution-channel-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border mt-divider">
             <Icon size={17} />
           </div>
 
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">
+            <p className="truncate text-xs font-bold mt-heading">
               {channel.label}
             </p>
 
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="mt-1 text-[10px] mt-muted">
               {enabled ? "Connected target" : "Not enabled"}
             </p>
           </div>
@@ -227,59 +313,64 @@ const ChannelStatusItem = ({ channelKey, data }) => {
 
       {enabled && (
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-            <p className="text-[11px] text-gray-500">Total</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900">{total}</p>
+          <div className="rounded-lg border mt-divider mt-card p-2.5">
+            <p className="text-[10px] mt-muted">Total</p>
+
+            <p className="mt-1 text-sm font-bold mt-heading">{total}</p>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-            <p className="text-[11px] text-gray-500">Published</p>
-            <p className="mt-1 text-sm font-semibold text-green-700">
+          <div className="rounded-lg border mt-divider mt-card p-2.5">
+            <p className="text-[10px] mt-muted">Published</p>
+
+            <p className="mt-1 text-sm font-bold text-emerald-600">
               {published}
             </p>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-            <p className="text-[11px] text-gray-500">Pending</p>
-            <p className="mt-1 text-sm font-semibold text-amber-700">
-              {pending}
-            </p>
+          <div className="rounded-lg border mt-divider mt-card p-2.5">
+            <p className="text-[10px] mt-muted">Pending</p>
+
+            <p className="mt-1 text-sm font-bold text-amber-600">{pending}</p>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-            <p className="text-[11px] text-gray-500">Failed</p>
-            <p className="mt-1 text-sm font-semibold text-red-700">{failed}</p>
+          <div className="rounded-lg border mt-divider mt-card p-2.5">
+            <p className="text-[10px] mt-muted">Failed</p>
+
+            <p className="mt-1 text-sm font-bold text-red-600">{failed}</p>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
 // ======================================================
 // DISTRIBUTION LOG ROW
 // ======================================================
 
-const DistributionLogRow = ({ log, retryingId, onRetry }) => {
+function DistributionLogRow({ log, retryingId, onRetry }) {
   const channel = getChannelByKey(log?.channel);
   const ChannelIcon = channel.icon;
 
-  const logId = log?._id || log?.id;
+  const logId = getLogId(log);
 
   const status = normalizeStatus(log?.status);
 
+  const isRetrying = retryingId === logId;
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border mt-divider mt-card p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* LEFT */}
+
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-700">
+              <div className="distribution-channel-icon flex h-8 w-8 items-center justify-center rounded-lg border mt-divider">
                 <ChannelIcon size={15} />
               </div>
 
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-xs font-bold mt-heading">
                 {channel.label}
               </span>
             </div>
@@ -287,81 +378,93 @@ const DistributionLogRow = ({ log, retryingId, onRetry }) => {
             <StatusBadge status={log?.status} />
           </div>
 
-          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <p className="text-xs text-gray-400">Target</p>
-              <p className="mt-0.5 truncate font-medium text-gray-700">
+          <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2 xl:grid-cols-4">
+            {/* TARGET */}
+
+            <div className="min-w-0">
+              <p className="text-[10px] mt-muted">Target</p>
+
+              <p className="mt-1 truncate font-semibold mt-heading">
                 {log?.targetName || log?.targetId || "-"}
               </p>
             </div>
 
-            <div>
-              <p className="text-xs text-gray-400">URL</p>
+            {/* TARGET URL */}
+
+            <div className="min-w-0">
+              <p className="text-[10px] mt-muted">URL</p>
 
               {log?.targetUrl ? (
                 <a
                   href={log.targetUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate font-medium text-gray-700 hover:text-gray-900 hover:underline"
+                  className="mt-1 inline-flex max-w-full items-center gap-1 font-semibold mt-primary hover:underline"
                 >
                   <span className="truncate">{log.targetUrl}</span>
 
-                  <ExternalLink size={12} className="shrink-0" />
+                  <ExternalLink size={11} className="shrink-0" />
                 </a>
               ) : (
-                <p className="mt-0.5 text-gray-700">-</p>
+                <p className="mt-1 font-semibold mt-heading">-</p>
               )}
             </div>
 
-            <div>
-              <p className="text-xs text-gray-400">External Post</p>
+            {/* EXTERNAL POST */}
+
+            <div className="min-w-0">
+              <p className="text-[10px] mt-muted">External Post</p>
 
               {log?.externalUrl ? (
                 <a
                   href={log.externalUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-0.5 inline-flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900 hover:underline"
+                  className="mt-1 inline-flex items-center gap-1 font-semibold mt-primary hover:underline"
                 >
                   View Post
-                  <ExternalLink size={12} />
+                  <ExternalLink size={11} />
                 </a>
               ) : (
-                <p className="mt-0.5 truncate text-gray-700">
+                <p className="mt-1 truncate font-semibold mt-heading">
                   {log?.externalPostId || "-"}
                 </p>
               )}
             </div>
 
-            <div>
-              <p className="text-xs text-gray-400">Published</p>
+            {/* PUBLISHED */}
 
-              <p className="mt-0.5 text-gray-700">
+            <div>
+              <p className="text-[10px] mt-muted">Published</p>
+
+              <p className="mt-1 font-semibold mt-heading">
                 {formatDate(log?.publishedAt)}
               </p>
             </div>
           </div>
 
+          {/* ERROR */}
+
           {status === "failed" && log?.error && (
             <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">
-              <span className="font-semibold">Error:</span> {log.error}
+              <span className="font-bold">Error:</span> {log.error}
             </div>
           )}
         </div>
 
-        {/* ACTION */}
+        {/* RETRY */}
+
         {status === "failed" && (
           <button
             type="button"
             onClick={() => onRetry(log)}
-            disabled={retryingId === logId}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isRetrying}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border mt-divider mt-card px-3.5 py-2 text-xs font-semibold mt-heading transition mt-hover disabled:opacity-50"
           >
-            {retryingId === logId ? (
-              <Loader2 size={15} className="animate-spin" />
+            {isRetrying ? (
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <RefreshCw size={15} />
+              <RefreshCw size={14} />
             )}
             Retry
           </button>
@@ -369,13 +472,13 @@ const DistributionLogRow = ({ log, retryingId, onRetry }) => {
       </div>
     </div>
   );
-};
+}
 
 // ======================================================
-// CONTENT CARD
+// CONTENT DISTRIBUTION CARD
 // ======================================================
 
-const ContentCard = ({
+function ContentCard({
   content,
   expanded,
   onToggle,
@@ -383,7 +486,7 @@ const ContentCard = ({
   onDistribute,
   retryingId,
   onRetry,
-}) => {
+}) {
   const totalTargets = Number(content?.totalTargets) || 0;
 
   const publishedTargets = Number(content?.publishedTargets) || 0;
@@ -399,46 +502,54 @@ const ContentCard = ({
 
   const logs = safeArray(content?.logs);
 
-  const contentId = content?.contentId;
+  const contentId = getContentId(content);
+
+  const retryId = getRetryId(content);
+
+  const isRetrying = retryingId === retryId;
 
   const contentStatus = normalizeStatus(content?.status);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      {/* HEADER */}
-      <div className="p-5">
+    <article className="mt-card overflow-hidden rounded-xl border shadow-sm">
+      {/* ==================================================
+          CARD HEADER
+      ================================================== */}
+
+      <div className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           {/* CONTENT INFO */}
+
           <div className="flex min-w-0 flex-1 gap-3">
             <button
               type="button"
               onClick={onToggle}
-              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
               aria-label={
                 expanded ? "Collapse distribution" : "Expand distribution"
               }
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border mt-divider mt-subtle transition mt-hover"
             >
               {expanded ? (
-                <ChevronDown size={18} />
+                <ChevronDown size={17} />
               ) : (
-                <ChevronRight size={18} />
+                <ChevronRight size={17} />
               )}
             </button>
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="truncate text-base font-semibold text-gray-900">
+                <h3 className="truncate text-sm font-bold mt-heading">
                   {content?.title || "Untitled Content"}
                 </h3>
 
                 <StatusBadge status={content?.status} />
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] mt-muted">
                 {content?.type && (
                   <span>
                     Type:{" "}
-                    <span className="font-medium text-gray-700">
+                    <span className="font-semibold mt-heading">
                       {content.type}
                     </span>
                   </span>
@@ -447,7 +558,7 @@ const ContentCard = ({
                 {content?.keyword && (
                   <span>
                     Keyword:{" "}
-                    <span className="font-medium text-gray-700">
+                    <span className="font-semibold mt-heading">
                       {content.keyword}
                     </span>
                   </span>
@@ -456,14 +567,14 @@ const ContentCard = ({
                 {contentId && (
                   <span>
                     ID:{" "}
-                    <span className="font-mono text-gray-700">{contentId}</span>
+                    <span className="font-mono mt-heading">{contentId}</span>
                   </span>
                 )}
 
                 {content?.publishedAt && (
                   <span>
                     Published:{" "}
-                    <span className="font-medium text-gray-700">
+                    <span className="font-semibold mt-heading">
                       {formatDate(content.publishedAt)}
                     </span>
                   </span>
@@ -473,18 +584,19 @@ const ContentCard = ({
           </div>
 
           {/* ACTIONS */}
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2 pl-12 xl:pl-0">
             {failedTargets > 0 && (
               <button
                 type="button"
                 onClick={() => onRetry(content)}
-                disabled={retryingId === (content?._id || contentId)}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isRetrying}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border mt-divider mt-card px-3 text-xs font-semibold mt-heading transition mt-hover disabled:opacity-50"
               >
-                {retryingId === (content?._id || contentId) ? (
-                  <Loader2 size={15} className="animate-spin" />
+                {isRetrying ? (
+                  <Loader2 size={14} className="animate-spin" />
                 ) : (
-                  <RefreshCw size={15} />
+                  <RefreshCw size={14} />
                 )}
                 Retry Failed
               </button>
@@ -494,72 +606,79 @@ const ContentCard = ({
               type="button"
               onClick={() => onDistribute(contentId)}
               disabled={distributing || !contentId}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg px-3.5 text-xs font-semibold mt-primary-bg disabled:cursor-not-allowed disabled:opacity-50"
             >
               {distributing ? (
-                <Loader2 size={15} className="animate-spin" />
+                <Loader2 size={14} className="animate-spin" />
               ) : (
-                <Send size={15} />
+                <Send size={14} />
               )}
               Distribute
             </button>
           </div>
         </div>
 
-        {/* PROGRESS */}
+        {/* ==================================================
+            PROGRESS
+        ================================================== */}
+
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-[11px] font-semibold mt-muted">
               Distribution Progress
             </span>
 
-            <span className="text-xs font-semibold text-gray-900">
+            <span className="text-[11px] font-bold mt-heading">
               {publishedTargets}/{totalTargets} published
             </span>
           </div>
 
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+          <div className="h-2 overflow-hidden rounded-full mt-subtle">
             <div
-              className="h-full rounded-full bg-gray-900 transition-all duration-300"
+              className="h-full rounded-full mt-primary-bg transition-all duration-300"
               style={{
                 width: `${progress}%`,
               }}
             />
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-500">
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[10px] mt-muted">
             <span>
-              Total: <strong className="text-gray-700">{totalTargets}</strong>
+              Total: <strong className="mt-heading">{totalTargets}</strong>
             </span>
 
             <span>
               Published:{" "}
-              <strong className="text-green-700">{publishedTargets}</strong>
+              <strong className="text-emerald-600">{publishedTargets}</strong>
             </span>
 
             <span>
               Pending:{" "}
-              <strong className="text-amber-700">{pendingTargets}</strong>
+              <strong className="text-amber-600">{pendingTargets}</strong>
             </span>
 
             <span>
-              Failed: <strong className="text-red-700">{failedTargets}</strong>
+              Failed: <strong className="text-red-600">{failedTargets}</strong>
             </span>
           </div>
         </div>
       </div>
 
-      {/* EXPANDED */}
+      {/* ==================================================
+          EXPANDED CONTENT
+      ================================================== */}
+
       {expanded && (
-        <div className="border-t border-gray-200 bg-gray-50/60 p-5">
+        <div className="border-t mt-divider mt-subtle p-4 sm:p-5">
           {/* CHANNELS */}
+
           <div>
             <div className="mb-3">
-              <h4 className="text-sm font-semibold text-gray-900">
+              <h4 className="text-xs font-bold mt-heading">
                 Distribution Channels
               </h4>
 
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-[10px] mt-muted">
                 Current status across all connected distribution channels.
               </p>
             </div>
@@ -576,13 +695,14 @@ const ContentCard = ({
           </div>
 
           {/* LOGS */}
+
           <div className="mt-6">
             <div className="mb-3">
-              <h4 className="text-sm font-semibold text-gray-900">
+              <h4 className="text-xs font-bold mt-heading">
                 Distribution Targets
               </h4>
 
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-[10px] mt-muted">
                 Detailed publishing activity for this content.
               </p>
             </div>
@@ -591,7 +711,7 @@ const ContentCard = ({
               <div className="space-y-3">
                 {logs.map((log, index) => (
                   <DistributionLogRow
-                    key={log?._id || log?.id || `${contentId}-${index}`}
+                    key={getLogId(log) || `${contentId}-${index}`}
                     log={log}
                     retryingId={retryingId}
                     onRetry={onRetry}
@@ -599,16 +719,16 @@ const ContentCard = ({
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                  <Send size={18} />
+              <div className="rounded-xl border border-dashed mt-divider mt-card px-5 py-10 text-center">
+                <div className="distribution-stat-icon mx-auto flex h-10 w-10 items-center justify-center rounded-xl">
+                  <Send size={17} />
                 </div>
 
-                <p className="mt-3 text-sm font-medium text-gray-900">
+                <p className="mt-3 text-xs font-bold mt-heading">
                   No distribution activity yet
                 </p>
 
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-[10px] mt-muted">
                   Start distribution to publish this content across your
                   connected channels.
                 </p>
@@ -617,16 +737,76 @@ const ContentCard = ({
           </div>
         </div>
       )}
+    </article>
+  );
+}
+
+// ======================================================
+// LOADING STATE
+// ======================================================
+
+function LoadingState() {
+  return (
+    <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
+      <div className="distribution-stat-icon flex h-12 w-12 items-center justify-center rounded-xl">
+        <Loader2 size={22} className="animate-spin" />
+      </div>
+
+      <p className="mt-4 text-xs font-bold mt-heading">
+        Loading distribution reports
+      </p>
+
+      <p className="mt-1 text-[10px] mt-muted">
+        Please wait while we load your distribution data.
+      </p>
     </div>
   );
-};
+}
+
+// ======================================================
+// EMPTY STATE
+// ======================================================
+
+function EmptyState({ hasFilters, onClear }) {
+  return (
+    <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed mt-divider mt-subtle px-6 text-center">
+      <div className="distribution-stat-icon flex h-12 w-12 items-center justify-center rounded-xl">
+        <Radio size={21} />
+      </div>
+
+      <h3 className="mt-4 text-sm font-bold mt-heading">
+        No distribution records found
+      </h3>
+
+      <p className="mt-2 max-w-md text-xs leading-5 mt-muted">
+        {hasFilters
+          ? "Try changing your search or filters to find distribution records."
+          : "Distribution records will appear here once content is sent to your connected channels."}
+      </p>
+
+      {hasFilters && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-4 h-9 rounded-lg border mt-divider mt-card px-4 text-xs font-semibold mt-heading transition mt-hover"
+        >
+          Clear Filters
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ======================================================
 // MAIN COMPONENT
 // ======================================================
 
-const Distribution = () => {
+export default function Distribution() {
   const navigate = useNavigate();
+
+  // ====================================================
+  // STATES
+  // ====================================================
 
   const [reports, setReports] = useState([]);
 
@@ -649,10 +829,103 @@ const Distribution = () => {
   const [distributingContentId, setDistributingContentId] = useState(null);
 
   // ====================================================
+  // THEME STYLES
+  // ====================================================
+
+  const themeStyles = `
+    .distribution-page {
+      min-height: 100vh;
+      background: var(--app-bg, #f8fafc);
+      color: var(--app-heading, #111827);
+    }
+
+    .distribution-page .mt-card {
+      background: var(--app-surface, #ffffff);
+      border-color: var(--app-border, #e5e7eb);
+      color: var(--app-heading, #111827);
+    }
+
+    .distribution-page .mt-heading {
+      color: var(--app-heading, #111827);
+    }
+
+    .distribution-page .mt-muted {
+      color: var(--app-muted, #6b7280);
+    }
+
+    .distribution-page .mt-primary {
+      color: var(--theme-primary, #4f46e5);
+    }
+
+    .distribution-page .mt-primary-bg {
+      background: var(--theme-primary, #4f46e5);
+      color: #ffffff;
+    }
+
+    .distribution-page .mt-primary-bg:hover {
+      filter: brightness(.94);
+    }
+
+    .distribution-page .mt-primary-soft {
+      background: var(--theme-primary-soft, #eef2ff);
+      color: var(--theme-primary, #4f46e5);
+      border-color: var(--theme-primary-border, #c7d2fe);
+    }
+
+    .distribution-page .mt-input {
+      background: var(--app-surface, #ffffff);
+      color: var(--app-heading, #111827);
+      border: 1px solid var(--app-border, #e5e7eb);
+    }
+
+    .distribution-page .mt-input:focus {
+      border-color: var(--theme-primary, #4f46e5);
+      box-shadow: 0 0 0 3px var(--theme-primary-soft, #eef2ff);
+      outline: none;
+    }
+
+    .distribution-page .mt-input::placeholder {
+      color: var(--app-muted, #9ca3af);
+    }
+
+    .distribution-page .mt-hover:hover {
+      background: var(--app-hover, #f3f4f6);
+    }
+
+    .distribution-page .mt-subtle {
+      background: var(--app-hover, #f9fafb);
+      border-color: var(--app-border, #e5e7eb);
+    }
+
+    .distribution-page .mt-divider {
+      border-color: var(--app-border, #e5e7eb);
+    }
+
+    .distribution-page .distribution-stat-icon {
+      background: var(--theme-primary-soft, #eef2ff);
+      color: var(--theme-primary, #4f46e5);
+    }
+
+    .distribution-page .distribution-channel-icon {
+      background: var(--app-surface, #ffffff);
+      color: var(--app-muted, #6b7280);
+    }
+
+    .distribution-page button:disabled {
+      cursor: not-allowed;
+    }
+
+    .distribution-page select option {
+      background: var(--app-surface, #ffffff);
+      color: var(--app-heading, #111827);
+    }
+  `;
+
+  // ====================================================
   // LOAD REPORTS
   // ====================================================
 
-  const loadReports = async (showLoader = true) => {
+  const loadReports = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) {
         setLoading(true);
@@ -682,7 +955,7 @@ const Distribution = () => {
       setError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to load distribution reports",
+          "Failed to load distribution reports.",
       );
 
       setReports([]);
@@ -690,7 +963,7 @@ const Distribution = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   // ====================================================
   // INITIAL LOAD
@@ -698,7 +971,44 @@ const Distribution = () => {
 
   useEffect(() => {
     loadReports(true);
-  }, []);
+  }, [loadReports]);
+
+  // ====================================================
+  // SUMMARY
+  // ====================================================
+
+  const summary = useMemo(() => {
+    return reports.reduce(
+      (result, content) => {
+        result.total += 1;
+
+        const status = normalizeStatus(content?.status);
+
+        if (status === "published") result.published += 1;
+        if (status === "pending") result.pending += 1;
+        if (status === "processing") result.processing += 1;
+        if (status === "failed") result.failed += 1;
+
+        result.totalTargets += Number(content?.totalTargets) || 0;
+
+        result.publishedTargets += Number(content?.publishedTargets) || 0;
+
+        result.failedTargets += Number(content?.failedTargets) || 0;
+
+        return result;
+      },
+      {
+        total: 0,
+        published: 0,
+        pending: 0,
+        processing: 0,
+        failed: 0,
+        totalTargets: 0,
+        publishedTargets: 0,
+        failedTargets: 0,
+      },
+    );
+  }, [reports]);
 
   // ====================================================
   // FILTERED REPORTS
@@ -712,7 +1022,9 @@ const Distribution = () => {
 
       const keyword = String(content?.keyword || "").toLowerCase();
 
-      const contentId = String(content?.contentId || "").toLowerCase();
+      const contentId = String(
+        content?.contentId || content?._id || "",
+      ).toLowerCase();
 
       const matchesSearch =
         !searchValue ||
@@ -738,11 +1050,12 @@ const Distribution = () => {
   }, [reports, search, statusFilter, channelFilter]);
 
   // ====================================================
-  // CLEAR FILTERS
+  // FILTER HELPERS
   // ====================================================
 
-  const hasFilters =
-    search.trim() !== "" || statusFilter !== "all" || channelFilter !== "all";
+  const hasFilters = Boolean(
+    search.trim() || statusFilter !== "all" || channelFilter !== "all",
+  );
 
   const clearFilters = () => {
     setSearch("");
@@ -751,11 +1064,21 @@ const Distribution = () => {
   };
 
   // ====================================================
+  // REFRESH
+  // ====================================================
+
+  const handleRefresh = () => {
+    if (!refreshing) {
+      loadReports(false);
+    }
+  };
+
+  // ====================================================
   // DISTRIBUTE
   // ====================================================
 
   const handleDistribute = async (contentId) => {
-    if (!contentId) return;
+    if (!contentId || distributingContentId) return;
 
     try {
       setDistributingContentId(contentId);
@@ -767,7 +1090,7 @@ const Distribution = () => {
       console.error("DISTRIBUTE ERROR:", err?.response?.data || err);
 
       window.alert(
-        err?.response?.data?.message || err?.message || "Distribution failed",
+        err?.response?.data?.message || err?.message || "Distribution failed.",
       );
     } finally {
       setDistributingContentId(null);
@@ -781,9 +1104,9 @@ const Distribution = () => {
   const handleRetry = async (item) => {
     const contentId = item?.contentId || item?.content?.contentId;
 
-    if (!contentId) return;
+    if (!contentId || retryingId) return;
 
-    const retryId = item?._id || item?.id || contentId;
+    const retryId = getRetryId(item);
 
     try {
       setRetryingId(retryId);
@@ -795,7 +1118,7 @@ const Distribution = () => {
       console.error("RETRY DISTRIBUTION ERROR:", err?.response?.data || err);
 
       window.alert(
-        err?.response?.data?.message || err?.message || "Retry failed",
+        err?.response?.data?.message || err?.message || "Retry failed.",
       );
     } finally {
       setRetryingId(null);
@@ -815,51 +1138,65 @@ const Distribution = () => {
   // ====================================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="distribution-page">
+      <style>{themeStyles}</style>
+
       {/* ==================================================
           HEADER
       ================================================== */}
 
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-[1600px] px-6 py-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <header className="mt-card border-b mt-divider">
+        <div className="px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             {/* LEFT */}
-            <div>
-              <div className="mb-2.5 flex items-center gap-2 text-xs">
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] mt-muted">
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="inline-flex items-center gap-1.5 text-gray-500 transition hover:text-gray-800"
+                  className="inline-flex items-center gap-1.5 rounded px-1 py-1 transition mt-hover"
                 >
-                  <ArrowLeft size={14} />
+                  <ArrowLeft size={13} />
                   Back
                 </button>
-                <span className="text-gray-300">/</span>
-                <span className="text-gray-500">Business</span>
-                <span className="text-gray-300">/</span>
-                <span className="font-medium text-gray-800">Distribution</span>
+
+                <span>/</span>
+
+                <span>Business</span>
+
+                <span>/</span>
+
+                <span className="font-semibold mt-primary">Distribution</span>
+
+                <span className="rounded-full border mt-divider mt-subtle px-2 py-0.5 text-[10px] font-semibold">
+                  {summary.total}
+                </span>
               </div>
 
-              <h1 className="text-1xl font-bold tracking-tight text-gray-900">
-                Distribution
-              </h1>
+              <div className="mt-3">
+                <h1 className="text-xl font-bold tracking-tight mt-heading">
+                  Distribution
+                </h1>
 
-              <p className="mt-1 text-sm text-gray-500">
-                Monitor and manage content distribution across connected
-                channels.
-              </p>
+                <p className="mt-1 text-xs mt-muted">
+                  Monitor and manage content distribution across your connected
+                  channels.
+                </p>
+              </div>
             </div>
 
             {/* RIGHT */}
+
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => loadReports(false)}
+                onClick={handleRefresh}
                 disabled={refreshing}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border mt-divider mt-card px-3 text-xs font-semibold mt-muted transition mt-hover disabled:opacity-50"
               >
                 <RefreshCw
-                  size={15}
+                  size={14}
                   className={refreshing ? "animate-spin" : ""}
                 />
                 Refresh
@@ -870,187 +1207,334 @@ const Distribution = () => {
       </header>
 
       {/* ==================================================
-          MAIN
+          MAIN CONTENT
       ================================================== */}
 
-      <main className="mx-auto max-w-[1600px] px-6 py-6">
-        {/* ERROR */}
-        {error && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-            <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-600" />
+      <main className="space-y-4 px-5 py-5">
+        {/* ERROR ALERT */}
 
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-red-800">
+        {error && (
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+            <AlertCircle size={17} className="shrink-0 text-red-600" />
+
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-red-800">
                 Unable to load distribution
               </p>
 
-              <p className="mt-1 text-sm text-red-700">{error}</p>
+              <p className="mt-0.5 break-words text-xs text-red-600">{error}</p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => loadReports(true)}
+              className="shrink-0 text-xs font-semibold text-red-700 underline"
+            >
+              Retry
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setError("")}
+              className="rounded-md p-1 text-red-600 transition hover:bg-red-100"
+            >
+              <X size={15} />
+            </button>
           </div>
         )}
 
         {/* ==================================================
-            CONTENT LIBRARY STYLE SECTION
+            SUMMARY CARDS
         ================================================== */}
 
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          {/* SECTION HEADER */}
-          <div className="border-b border-gray-200 px-5 pt-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              {/* TITLE + COUNT */}
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                
-                  {/* COUNT */}
-                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 text-xs font-medium text-gray-600">
-                    {filteredReports.length}{" "}
-                    {filteredReports.length === 1 ? "item" : "items"}
-                  </span>
-                </div>
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            title="Total Content"
+            value={summary.total}
+            description="Distribution records"
+            icon={FileText}
+          />
+
+          <SummaryCard
+            title="Published"
+            value={summary.published}
+            description="Successfully published"
+            icon={CheckCircle2}
+            iconClass="bg-emerald-50 text-emerald-600"
+          />
+
+          <SummaryCard
+            title="Pending"
+            value={summary.pending + summary.processing}
+            description="Waiting or processing"
+            icon={Clock3}
+            iconClass="bg-amber-50 text-amber-600"
+          />
+
+          <SummaryCard
+            title="Failed"
+            value={summary.failed}
+            description="Records needing attention"
+            icon={XCircle}
+            iconClass="bg-red-50 text-red-600"
+          />
+        </section>
+
+        {/* ==================================================
+            DISTRIBUTION OVERVIEW
+        ================================================== */}
+
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-card rounded-xl border p-4">
+            <div className="flex items-center gap-2">
+              <div className="distribution-stat-icon flex h-8 w-8 items-center justify-center rounded-lg">
+                <Radio size={16} />
               </div>
 
-              {/* FILTERS */}
+              <p className="text-[11px] font-semibold mt-muted">
+                Total Targets
+              </p>
+            </div>
+
+            <p className="mt-3 text-xl font-bold mt-heading">
+              {summary.totalTargets.toLocaleString("en-IN")}
+            </p>
+          </div>
+
+          <div className="mt-card rounded-xl border p-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                <CheckCircle2 size={16} />
+              </div>
+
+              <p className="text-[11px] font-semibold mt-muted">
+                Published Targets
+              </p>
+            </div>
+
+            <p className="mt-3 text-xl font-bold text-emerald-600">
+              {summary.publishedTargets.toLocaleString("en-IN")}
+            </p>
+          </div>
+
+          <div className="mt-card rounded-xl border p-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                <AlertCircle size={16} />
+              </div>
+
+              <p className="text-[11px] font-semibold mt-muted">
+                Failed Targets
+              </p>
+            </div>
+
+            <p className="mt-3 text-xl font-bold text-red-600">
+              {summary.failedTargets.toLocaleString("en-IN")}
+            </p>
+          </div>
+        </section>
+
+        {/* ==================================================
+            DISTRIBUTION LIST
+        ================================================== */}
+
+        <section className="mt-card overflow-hidden rounded-xl border shadow-sm">
+          {/* TOOLBAR */}
+
+          <div className="border-b mt-divider p-4">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              {/* TITLE */}
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold mt-heading">
+                    Distribution Reports
+                  </h2>
+
+                  <span className="rounded-full border mt-divider mt-subtle px-2 py-0.5 text-[10px] font-semibold mt-muted">
+                    {filteredReports.length}
+                  </span>
+                </div>
+
+                <p className="mt-1 text-[10px] mt-muted">
+                  Track publishing activity and channel performance.
+                </p>
+              </div>
+
+              {/* SEARCH AND FILTERS */}
+
               <div className="flex flex-col gap-2 sm:flex-row">
                 {/* SEARCH */}
-                <div className="relative min-w-0 sm:w-64">
+
+                <div className="relative w-full sm:w-[230px]">
                   <Search
-                    size={16}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 mt-muted"
                   />
 
                   <input
                     type="text"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search content..."
-                    className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
+                    className="mt-input h-9 w-full rounded-lg pl-9 pr-9 text-xs"
                   />
+
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 mt-muted transition mt-hover"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
                 </div>
 
                 {/* STATUS */}
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
-                >
-                  <option value="all">All Status</option>
 
-                  <option value="pending">Pending</option>
+                <div className="relative">
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    className="mt-input h-9 w-full appearance-none rounded-lg pl-3 pr-8 text-xs font-medium sm:w-[145px]"
+                  >
+                    <option value="all">All Status</option>
 
-                  <option value="processing">Processing</option>
+                    {STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>
+                        {STATUS_CONFIG[status].label}
+                      </option>
+                    ))}
+                  </select>
 
-                  <option value="published">Published</option>
-
-                  <option value="failed">Failed</option>
-
-                  <option value="skipped">Skipped</option>
-
-                  <option value="draft">Draft</option>
-                </select>
+                  <ChevronDown
+                    size={13}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 mt-muted"
+                  />
+                </div>
 
                 {/* CHANNEL */}
-                <select
-                  value={channelFilter}
-                  onChange={(e) => setChannelFilter(e.target.value)}
-                  className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-100"
-                >
-                  <option value="all">All Channels</option>
 
-                  {CHANNELS.map((channel) => (
-                    <option key={channel.key} value={channel.key}>
-                      {channel.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={channelFilter}
+                    onChange={(event) => setChannelFilter(event.target.value)}
+                    className="mt-input h-9 w-full appearance-none rounded-lg pl-3 pr-8 text-xs font-medium sm:w-[150px]"
+                  >
+                    <option value="all">All Channels</option>
+
+                    {CHANNELS.map((channel) => (
+                      <option key={channel.key} value={channel.key}>
+                        {channel.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <ChevronDown
+                    size={13}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 mt-muted"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* COUNT / ACTIVE FILTER */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              {hasFilters && (
+            {/* ACTIVE FILTERS */}
+
+            {hasFilters && (
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-[10px] mt-muted">Filters are active</p>
+
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-xs font-medium text-gray-600 transition hover:text-gray-900 hover:underline"
+                  className="text-[10px] font-semibold mt-primary"
                 >
                   Clear filters
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* ==================================================
               CONTENT LIST
           ================================================== */}
 
-          <div className="p-5">
-            {/* LOADING */}
+          <div className="p-4 sm:p-5">
             {loading ? (
-              <div className="flex min-h-[300px] items-center justify-center">
-                <div className="flex flex-col items-center">
-                  <Loader2 size={24} className="animate-spin text-gray-500" />
+              <LoadingState />
+            ) : error && reports.length === 0 ? (
+              <div className="flex min-h-[250px] flex-col items-center justify-center text-center">
+                <AlertCircle size={22} className="text-red-500" />
 
-                  <p className="mt-3 text-sm text-gray-500">
-                    Loading distribution...
-                  </p>
-                </div>
-              </div>
-            ) : filteredReports.length === 0 ? (
-              /* EMPTY */
-              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/50 px-6 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                  <Send size={20} />
-                </div>
-
-                <h3 className="mt-4 text-sm font-semibold text-gray-900">
-                  No distribution records found
-                </h3>
-
-                <p className="mt-1 max-w-md text-sm text-gray-500">
-                  {hasFilters
-                    ? "Try changing your search or filters to find distribution records."
-                    : "Distribution records will appear here once content is sent to connected channels."}
+                <p className="mt-3 text-xs font-semibold mt-heading">
+                  Could not load distribution reports
                 </p>
 
-                {hasFilters && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="mt-4 inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
-                  >
-                    Clear Filters
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => loadReports(true)}
+                  className="mt-3 text-xs font-semibold mt-primary"
+                >
+                  Try again
+                </button>
               </div>
+            ) : filteredReports.length === 0 ? (
+              <EmptyState hasFilters={hasFilters} onClear={clearFilters} />
             ) : (
-              /* LIST */
-              <div className="space-y-4">
-                {filteredReports.map((content, index) => {
-                  const contentId =
-                    content?.contentId || content?._id || `content-${index}`;
+              <>
+                <div className="space-y-3">
+                  {filteredReports.map((content, index) => {
+                    const contentId =
+                      getContentId(content) || `content-${index}`;
 
-                  return (
-                    <ContentCard
-                      key={contentId}
-                      content={content}
-                      expanded={expandedContent === contentId}
-                      onToggle={() => toggleContent(contentId)}
-                      distributing={
-                        distributingContentId === content?.contentId
-                      }
-                      onDistribute={handleDistribute}
-                      retryingId={retryingId}
-                      onRetry={handleRetry}
-                    />
-                  );
-                })}
-              </div>
+                    return (
+                      <ContentCard
+                        key={contentId}
+                        content={content}
+                        expanded={expandedContent === contentId}
+                        onToggle={() => toggleContent(contentId)}
+                        distributing={
+                          distributingContentId === content?.contentId
+                        }
+                        onDistribute={handleDistribute}
+                        retryingId={retryingId}
+                        onRetry={handleRetry}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* FOOTER */}
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t mt-divider pt-4">
+                  <p className="text-[10px] mt-muted">
+                    Showing{" "}
+                    <span className="font-bold mt-heading">
+                      {filteredReports.length}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-bold mt-heading">
+                      {reports.length}
+                    </span>{" "}
+                    distribution records
+                  </p>
+
+                  {hasFilters && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="text-[10px] font-semibold mt-primary"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </section>
       </main>
     </div>
   );
-};
-
-export default Distribution;
+}

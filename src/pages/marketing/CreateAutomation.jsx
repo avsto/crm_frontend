@@ -34,6 +34,7 @@ import automationApi from "../../api/automation.api";
 import teamApi from "../../api/team.api";
 import marketingTemplateApi from "../../api/marketingTemplate.api";
 import MediaManager from "../../components/media/MediaManager";
+import crmApi from "../../api/crm.api";
 
 // ======================================================
 // CONSTANTS
@@ -565,6 +566,42 @@ export default function CreateAutomation() {
 
   const selected = nodes.find((node) => node.id === selectedNode);
 
+  const [tags, setTags] = useState([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+  const [tagsError, setTagsError] = useState("");
+
+  const fetchTags = async () => {
+    try {
+      setTagsLoading(true);
+      setTagsError("");
+
+      const response = await crmApi.getTags({
+        page: 1,
+        limit: 1000,
+      });
+
+      const result =
+        response?.data?.data?.tags ||
+        response?.data?.tags ||
+        response?.data?.data ||
+        response?.data ||
+        response?.tags ||
+        [];
+
+      setTags(Array.isArray(result) ? result : []);
+    } catch (err) {
+      console.error("Fetch CRM Tags Error:", err);
+
+      setTagsError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Unable to load CRM tags.",
+      );
+    } finally {
+      setTagsLoading(false);
+    }
+  };
+
   // ----------------------------------------------------
   // FETCH TEAM MEMBERS
   // ----------------------------------------------------
@@ -624,6 +661,7 @@ export default function CreateAutomation() {
   useEffect(() => {
     fetchTeamMembers();
     fetchTemplates();
+    fetchTags();
   }, []);
 
   // ----------------------------------------------------
@@ -931,7 +969,6 @@ export default function CreateAutomation() {
       return;
     }
 
-
     const payload = {
       name: name.trim(),
       description,
@@ -1195,14 +1232,80 @@ export default function CreateAutomation() {
 
       case "tag":
         return (
-          <Field label="Tag Name">
-            <input
-              className={inputClass}
-              value={c.tag || ""}
-              onChange={(e) => updateConfig(node.id, "tag", e.target.value)}
-              placeholder="e.g. Hot Lead"
-            />
-          </Field>
+          <div className="space-y-3">
+            <Field label="Select CRM Tag">
+              <select
+                className={inputClass}
+                value={c.tagId || ""}
+                disabled={tagsLoading}
+                onChange={(e) => {
+                  const selectedTag = tags.find(
+                    (tag) => String(tag._id || tag.id) === e.target.value,
+                  );
+
+                  updateManyConfig(node.id, {
+                    tagId: selectedTag
+                      ? String(selectedTag._id || selectedTag.id)
+                      : "",
+                    tag: selectedTag
+                      ? selectedTag.name ||
+                        selectedTag.title ||
+                        selectedTag.label
+                      : "",
+                  });
+                }}
+              >
+                <option value="">
+                  {tagsLoading ? "Loading CRM tags..." : "Select a tag"}
+                </option>
+
+                {tags.map((tag) => {
+                  const id = String(tag._id || tag.id);
+                  const label =
+                    tag.name || tag.title || tag.label || "Untitled Tag";
+
+                  return (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </Field>
+
+            {tagsError && (
+              <div className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50 p-3">
+                <p className="text-xs text-red-600">{tagsError}</p>
+
+                <button
+                  type="button"
+                  onClick={fetchTags}
+                  disabled={tagsLoading}
+                  className="text-xs font-semibold text-red-700 hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!tagsLoading && !tagsError && tags.length === 0 && (
+              <div className="rounded-lg border border-amber-100 bg-amber-50 p-3">
+                <p className="text-xs text-amber-700">
+                  No CRM tags found. Please create a tag in CRM first.
+                </p>
+              </div>
+            )}
+
+            {c.tag && (
+              <div className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+                <Tag size={15} className="text-indigo-600" />
+
+                <span className="text-xs font-semibold text-indigo-700">
+                  Selected: {c.tag}
+                </span>
+              </div>
+            )}
+          </div>
         );
 
       case "status":
@@ -1582,7 +1685,7 @@ export default function CreateAutomation() {
       <header className="z-20 flex h-[65px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/marketing/automations")}
+            onClick={() => navigate("/marketing/automation")}
             className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
           >
             <ArrowLeft size={18} />

@@ -82,14 +82,6 @@ const ChannelIcon = ({ type, size = 22 }) => {
           <Mail size={size} />
         </div>
       );
-    case "google":
-    case "googleads":
-    case "googlelead":
-      return (
-        <div className={`${wrapper} bg-red-50 text-red-600`}>
-          <FaGoogle size={size} />
-        </div>
-      );
 
     case "googleform":
     case "googleforms":
@@ -221,17 +213,6 @@ const DEFAULT_INTEGRATIONS = [
     description:
       "Connect WhatsApp Business to receive and manage customer messages.",
     category: "Messaging",
-    connected: false,
-    status: "not_connected",
-    accountName: "",
-  },
-
-  {
-    key: "googleads",
-    name: "Google Ads",
-    description:
-      "Connect Google Ads to track campaigns and capture advertising leads.",
-    category: "Marketing",
     connected: false,
     status: "not_connected",
     accountName: "",

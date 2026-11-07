@@ -1,51 +1,45 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Archive,
   ArchiveRestore,
+  ArrowLeft,
+  CheckCheck,
   ChevronDown,
   Filter,
+  Inbox as InboxIcon,
   Loader2,
   Mail,
   MessageCircle,
-  MoreVertical,
+  MoreHorizontal,
   RefreshCw,
   Search,
   Send,
   Star,
   X,
+  Check,
+  Circle,
 } from "lucide-react";
 
 import inboxApi from "../../api/inbox.api";
 import WhatsAppActivity from "./../crm/activities/WhatsAppActivity";
-
 import useNotifications from "../../hooks/useNotifications";
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-const getResponseData = (response) => {
-  return response?.data?.data ?? response?.data ?? null;
-};
+const getResponseData = (response) =>
+  response?.data?.data ?? response?.data ?? null;
 
-const getConversationId = (conversation) => {
-  return (
-    conversation?._id ||
-    conversation?.id ||
-    conversation?.conversationId ||
-    null
-  );
-};
+const getConversationId = (conversation) =>
+  conversation?._id || conversation?.id || conversation?.conversationId || null;
 
-const getCustomer = (conversation) => {
-  return (
-    conversation?.customer ||
-    conversation?.participant ||
-    conversation?.lead ||
-    {}
-  );
-};
+const getCustomer = (conversation) =>
+  conversation?.customer ||
+  conversation?.participant ||
+  conversation?.lead ||
+  {};
 
 const getCustomerName = (conversation) => {
   const customer = getCustomer(conversation);
@@ -57,7 +51,7 @@ const getCustomerName = (conversation) => {
     customer?.firstName ||
     conversation?.customerName ||
     conversation?.participantName ||
-    "Unknown"
+    "Unknown Customer"
   );
 };
 
@@ -74,144 +68,119 @@ const getCustomerPhone = (conversation) => {
 };
 
 const getLastMessageText = (conversation) => {
-  const lastMessage = conversation?.lastMessage;
+  const message = conversation?.lastMessage;
 
-  if (!lastMessage) {
-    return "No messages yet";
-  }
+  if (!message) return "No messages yet";
+  if (typeof message === "string") return message;
+  if (message?.text) return message.text;
 
-  if (typeof lastMessage === "string") {
-    return lastMessage;
-  }
+  const types = {
+    image: "📷 Photo",
+    video: "🎥 Video",
+    audio: "🎵 Audio",
+    document: "📄 Document",
+    sticker: "😊 Sticker",
+    location: "📍 Location",
+    contacts: "👤 Contact",
+    template: "Template message",
+    interactive: "Interactive message",
+    reaction: "Reaction",
+  };
 
-  if (lastMessage?.text) {
-    return lastMessage.text;
-  }
-
-  switch (lastMessage?.messageType) {
-    case "image":
-      return "📷 Image";
-
-    case "video":
-      return "🎥 Video";
-
-    case "audio":
-      return "🎵 Audio";
-
-    case "document":
-      return "📄 Document";
-
-    case "sticker":
-      return "😊 Sticker";
-
-    case "location":
-      return "📍 Location";
-
-    case "contacts":
-      return "👤 Contact";
-
-    case "template":
-      return "Template message";
-
-    case "interactive":
-      return "Interactive message";
-
-    case "reaction":
-      return "Reaction";
-
-    default:
-      return "Message";
-  }
+  return types[message?.messageType] || "Message";
 };
 
-const getLastMessageTime = (conversation) => {
-  return (
-    conversation?.lastMessageAt ||
-    conversation?.lastMessage?.createdAt ||
-    conversation?.updatedAt ||
-    null
-  );
-};
+const getLastMessageTime = (conversation) =>
+  conversation?.lastMessageAt ||
+  conversation?.lastMessage?.createdAt ||
+  conversation?.updatedAt ||
+  null;
 
-const formatTime = (date) => {
-  if (!date) return "";
+const getUnreadCount = (conversation) => Number(conversation?.unreadCount || 0);
 
-  const value = new Date(date);
-
-  if (Number.isNaN(value.getTime())) {
-    return "";
-  }
-
-  return value.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const getChannel = (conversation) => {
-  return String(
+const getChannel = (conversation) =>
+  String(
     conversation?.channel ||
       conversation?.provider ||
       conversation?.lastMessage?.channel ||
       "whatsapp",
   ).toLowerCase();
+
+const getInitials = (name = "") => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+
+  if (!words.length) return "U";
+
+  return words.length > 1
+    ? `${words[0][0]}${words[1][0]}`.toUpperCase()
+    : words[0].slice(0, 2).toUpperCase();
 };
 
-const getUnreadCount = (conversation) => {
-  return Number(conversation?.unreadCount || 0);
+const formatConversationTime = (date) => {
+  if (!date) return "";
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const now = new Date();
+
+  const isToday = parsed.toDateString() === now.toDateString();
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (isToday) {
+    return parsed.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  if (parsed.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  }
+
+  return parsed.toLocaleDateString([], {
+    day: "2-digit",
+    month: "short",
+  });
 };
 
 /* =========================================================
-   CHANNEL ICON
+   THEME ICON
 ========================================================= */
 
 const ChannelIcon = ({ channel }) => {
   const value = String(channel || "").toLowerCase();
 
-  if (value === "whatsapp") {
-    return (
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white">
-        <MessageCircle size={12} />
-      </div>
-    );
-  }
+  const config = {
+    whatsapp: {
+      label: "WA",
+      className: "inbox-channel-whatsapp",
+    },
+    facebook: {
+      label: "f",
+      className: "inbox-channel-facebook",
+    },
+    instagram: {
+      label: "IG",
+      className: "inbox-channel-instagram",
+    },
+    email: {
+      label: <Mail size={11} />,
+      className: "inbox-channel-email",
+    },
+    sms: {
+      label: <MessageCircle size={11} />,
+      className: "inbox-channel-sms",
+    },
+  };
 
-  if (value === "email") {
-    return (
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white">
-        <Mail size={12} />
-      </div>
-    );
-  }
-
-  if (value === "sms") {
-    return (
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-white">
-        <Send size={11} />
-      </div>
-    );
-  }
-
-  if (value === "facebook") {
-    return (
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
-        f
-      </div>
-    );
-  }
-
-  if (value === "instagram") {
-    return (
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-pink-500 text-[9px] font-bold text-white">
-        IG
-      </div>
-    );
-  }
+  const item = config[value] || config.whatsapp;
 
   return (
-    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-400 text-white">
-      <MessageCircle size={11} />
-    </div>
+    <span className={`inbox-channel-icon ${item.className}`}>{item.label}</span>
   );
 };
 
@@ -219,14 +188,16 @@ const ChannelIcon = ({ channel }) => {
    AVATAR
 ========================================================= */
 
-const Avatar = ({ conversation }) => {
+const Avatar = ({ conversation, size = "normal" }) => {
   const name = getCustomerName(conversation);
 
-  const initial = name?.trim()?.charAt(0)?.toUpperCase() || "U";
+  const sizeClass =
+    size === "large" ? "inbox-avatar-large" : "inbox-avatar-normal";
 
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
-      {initial}
+    <div className={`inbox-avatar ${sizeClass}`}>
+      {getInitials(name)}
+      <span className="inbox-avatar-status" />
     </div>
   );
 };
@@ -235,21 +206,17 @@ const Avatar = ({ conversation }) => {
    EMPTY STATE
 ========================================================= */
 
-const EmptyState = ({ title, description }) => {
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-        <MessageCircle className="text-gray-400" size={25} />
-      </div>
-
-      <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-
-      {description && (
-        <p className="mt-1 max-w-sm text-xs text-gray-500">{description}</p>
-      )}
+const EmptyState = ({ icon: Icon = MessageCircle, title, description }) => (
+  <div className="inbox-empty-state">
+    <div className="inbox-empty-icon">
+      <Icon size={26} strokeWidth={1.6} />
     </div>
-  );
-};
+
+    <h3>{title}</h3>
+
+    {description && <p>{description}</p>}
+  </div>
+);
 
 /* =========================================================
    CONVERSATION ITEM
@@ -257,61 +224,61 @@ const EmptyState = ({ title, description }) => {
 
 const ConversationItem = ({ conversation, selected, onClick }) => {
   const name = getCustomerName(conversation);
-  const lastMessage = getLastMessageText(conversation);
-  const lastMessageTime = getLastMessageTime(conversation);
-  const unreadCount = getUnreadCount(conversation);
+  const message = getLastMessageText(conversation);
+  const time = getLastMessageTime(conversation);
+  const unread = getUnreadCount(conversation);
   const channel = getChannel(conversation);
+
+  const isOutbound = conversation?.lastMessage?.direction === "outbound";
 
   return (
     <button
       type="button"
       onClick={() => onClick(conversation)}
-      className={`w-full border-b border-gray-100 px-3 py-3 text-left transition ${
-        selected ? "bg-gray-100" : "bg-white hover:bg-gray-50"
-      }`}
+      className={`inbox-conversation ${selected ? "is-selected" : ""}`}
     >
-      <div className="flex gap-3">
-        <Avatar conversation={conversation} />
+      <Avatar conversation={conversation} />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate text-sm font-semibold text-gray-800">
-                {name}
-              </span>
+      <div className="inbox-conversation-content">
+        <div className="inbox-conversation-top">
+          <div className="inbox-name-group">
+            <span className="inbox-customer-name">{name}</span>
 
-              <ChannelIcon channel={channel} />
-            </div>
+            <ChannelIcon channel={channel} />
 
-            <span className="shrink-0 text-[10px] text-gray-400">
-              {lastMessageTime ? formatTime(lastMessageTime) : ""}
-            </span>
-          </div>
-
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <p
-              className={`truncate text-xs ${
-                unreadCount > 0
-                  ? "font-semibold text-gray-700"
-                  : "text-gray-500"
-              }`}
-            >
-              {lastMessage}
-            </p>
-
-            {unreadCount > 0 && (
-              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-green-500 px-1.5 text-[10px] font-bold text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
+            {conversation?.starred && (
+              <Star
+                size={12}
+                className="inbox-star-active"
+                fill="currentColor"
+              />
             )}
           </div>
 
-          {conversation?.starred && (
-            <div className="mt-1">
-              <Star size={11} className="fill-yellow-400 text-yellow-400" />
-            </div>
+          <span className="inbox-time">{formatConversationTime(time)}</span>
+        </div>
+
+        <div className="inbox-conversation-bottom">
+          <p className="inbox-last-message">
+            {isOutbound && (
+              <CheckCheck size={13} className="inbox-message-tick" />
+            )}
+
+            {message}
+          </p>
+
+          {unread > 0 && (
+            <span className="inbox-unread-badge">
+              {unread > 99 ? "99+" : unread}
+            </span>
           )}
         </div>
+
+        {getCustomerPhone(conversation) && (
+          <p className="inbox-customer-phone">
+            {getCustomerPhone(conversation)}
+          </p>
+        )}
       </div>
     </button>
   );
@@ -321,56 +288,33 @@ const ConversationItem = ({ conversation, selected, onClick }) => {
    MAIN INBOX
 ========================================================= */
 
-const Inbox = () => {
+export default function Inbox() {
   const [conversations, setConversations] = useState([]);
 
   const [selectedConversation, setSelectedConversation] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
-
   const [channelFilter, setChannelFilter] = useState("all");
-
   const [statusFilter, setStatusFilter] = useState("all");
 
   const [showFilters, setShowFilters] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const [mobileView, setMobileView] = useState("list");
 
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const [showConversationMenu, setShowConversationMenu] = useState(false);
-
-  const { notifications, dismissNotification } = useNotifications();
-
-  useEffect(() => {
-    if (!notifications.length) return;
-
-    console.log("Notifications:", notifications);
-
-    const timers = notifications.map((item) =>
-      setTimeout(async () => {
-        await fetchConversations({
-          silent: true,
-        });
-        dismissNotification(item._id);
-      }, 5000),
-    );
-
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [notifications, dismissNotification]);
+  const { notifications = [], dismissNotification } = useNotifications();
 
   /* =====================================================
      FETCH CONVERSATIONS
   ===================================================== */
 
-  const fetchConversations = async ({ silent = false } = {}) => {
+  const fetchConversations = useCallback(async ({ silent = false } = {}) => {
     try {
       if (silent) {
         setRefreshing(true);
@@ -401,26 +345,25 @@ const Inbox = () => {
 
       setConversations(items);
 
-      if (selectedConversation) {
-        const selectedId = getConversationId(selectedConversation);
+      setSelectedConversation((previous) => {
+        if (!previous) return previous;
 
-        const updatedSelected = items.find(
-          (item) => getConversationId(item) === selectedId,
+        const selectedId = getConversationId(previous);
+
+        return (
+          items.find((item) => getConversationId(item) === selectedId) ||
+          previous
         );
-
-        if (updatedSelected) {
-          setSelectedConversation(updatedSelected);
-        }
-      }
+      });
 
       return items;
     } catch (err) {
-      console.error("Inbox fetchConversations error:", err);
+      console.error("Inbox fetch error:", err);
 
       setError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to load conversations.",
+          "Unable to load conversations.",
       );
 
       return [];
@@ -428,7 +371,7 @@ const Inbox = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   /* =====================================================
      INITIAL LOAD
@@ -436,10 +379,29 @@ const Inbox = () => {
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [fetchConversations]);
 
   /* =====================================================
-     FILTER
+     NOTIFICATION REFRESH
+  ===================================================== */
+
+  useEffect(() => {
+    if (!notifications.length) return;
+
+    const timers = notifications.map((item) =>
+      setTimeout(async () => {
+        await fetchConversations({ silent: true });
+        dismissNotification?.(item._id);
+      }, 5000),
+    );
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [notifications, dismissNotification, fetchConversations]);
+
+  /* =====================================================
+     FILTER CONVERSATIONS
   ===================================================== */
 
   const filteredConversations = useMemo(() => {
@@ -450,42 +412,48 @@ const Inbox = () => {
     if (query) {
       result = result.filter((conversation) => {
         const name = getCustomerName(conversation).toLowerCase();
-
         const phone = getCustomerPhone(conversation).toLowerCase();
-
-        const text = getLastMessageText(conversation).toLowerCase();
+        const message = getLastMessageText(conversation).toLowerCase();
 
         return (
-          name.includes(query) || phone.includes(query) || text.includes(query)
+          name.includes(query) ||
+          phone.includes(query) ||
+          message.includes(query)
         );
       });
     }
 
     if (channelFilter !== "all") {
-      result = result.filter(
-        (conversation) => getChannel(conversation) === channelFilter,
-      );
+      result = result.filter((item) => getChannel(item) === channelFilter);
     }
 
     if (statusFilter === "unread") {
-      result = result.filter(
-        (conversation) => getUnreadCount(conversation) > 0,
-      );
+      result = result.filter((item) => getUnreadCount(item) > 0);
     }
 
     if (statusFilter === "starred") {
-      result = result.filter((conversation) => conversation?.starred === true);
+      result = result.filter((item) => item?.starred === true);
     }
 
     if (statusFilter === "archived") {
-      result = result.filter((conversation) => conversation?.archived === true);
+      result = result.filter((item) => item?.archived === true);
     }
 
     if (statusFilter === "active") {
-      result = result.filter((conversation) => conversation?.archived !== true);
+      result = result.filter((item) => item?.archived !== true);
     }
 
-    return result;
+    return result.sort((a, b) => {
+      const first = new Date(
+        getLastMessageTime(a) || a.createdAt || 0,
+      ).getTime();
+
+      const second = new Date(
+        getLastMessageTime(b) || b.createdAt || 0,
+      ).getTime();
+
+      return second - first;
+    });
   }, [conversations, search, channelFilter, statusFilter]);
 
   /* =====================================================
@@ -496,10 +464,8 @@ const Inbox = () => {
     if (!conversation) return;
 
     setSelectedConversation(conversation);
-
     setMobileView("chat");
-
-    setShowConversationMenu(false);
+    setShowMenu(false);
 
     const conversationId = getConversationId(conversation);
 
@@ -509,24 +475,18 @@ const Inbox = () => {
       try {
         await inboxApi.markAsRead(conversationId);
 
-        setConversations((prev) =>
-          prev.map((item) =>
+        setConversations((previous) =>
+          previous.map((item) =>
             getConversationId(item) === conversationId
-              ? {
-                  ...item,
-                  unreadCount: 0,
-                }
+              ? { ...item, unreadCount: 0 }
               : item,
           ),
         );
 
-        setSelectedConversation((prev) =>
-          prev
-            ? {
-                ...prev,
-                unreadCount: 0,
-              }
-            : prev,
+        setSelectedConversation((previous) =>
+          previous && getConversationId(previous) === conversationId
+            ? { ...previous, unreadCount: 0 }
+            : previous,
         );
       } catch (err) {
         console.error("markAsRead error:", err);
@@ -535,21 +495,31 @@ const Inbox = () => {
   };
 
   /* =====================================================
-     REFRESH
+     UPDATE CONVERSATION LOCALLY
   ===================================================== */
 
-  const handleRefresh = async () => {
-    await fetchConversations({
-      silent: true,
-    });
+  const updateConversation = (conversationId, updates) => {
+    setConversations((previous) =>
+      previous.map((item) =>
+        getConversationId(item) === conversationId
+          ? { ...item, ...updates }
+          : item,
+      ),
+    );
+
+    setSelectedConversation((previous) =>
+      previous && getConversationId(previous) === conversationId
+        ? { ...previous, ...updates }
+        : previous,
+    );
   };
 
   /* =====================================================
-     STAR
+     TOGGLE STAR
   ===================================================== */
 
   const handleToggleStar = async () => {
-    if (!selectedConversation) return;
+    if (!selectedConversation || actionLoading) return;
 
     const conversationId = getConversationId(selectedConversation);
 
@@ -560,25 +530,9 @@ const Inbox = () => {
 
       await inboxApi.toggleStar(conversationId);
 
-      const currentStarred = selectedConversation?.starred === true;
-
-      const updated = {
-        ...selectedConversation,
-        starred: !currentStarred,
-      };
-
-      setSelectedConversation(updated);
-
-      setConversations((prev) =>
-        prev.map((item) =>
-          getConversationId(item) === conversationId
-            ? {
-                ...item,
-                starred: !currentStarred,
-              }
-            : item,
-        ),
-      );
+      updateConversation(conversationId, {
+        starred: !selectedConversation.starred,
+      });
     } catch (err) {
       console.error("toggleStar error:", err);
     } finally {
@@ -587,96 +541,49 @@ const Inbox = () => {
   };
 
   /* =====================================================
-     ARCHIVE
+     ARCHIVE / UNARCHIVE
   ===================================================== */
 
   const handleArchive = async () => {
-    if (!selectedConversation) return;
+    if (!selectedConversation || actionLoading) return;
 
     const conversationId = getConversationId(selectedConversation);
-
-    if (!conversationId) return;
 
     try {
       setActionLoading(true);
 
-      await inboxApi.archiveConversation(conversationId);
+      if (selectedConversation.archived) {
+        if (typeof inboxApi.unarchiveConversation !== "function") {
+          console.warn("inboxApi.unarchiveConversation is not available.");
+          return;
+        }
 
-      const updated = {
-        ...selectedConversation,
-        archived: true,
-      };
-
-      setSelectedConversation(updated);
-
-      setConversations((prev) =>
-        prev.map((item) =>
-          getConversationId(item) === conversationId
-            ? {
-                ...item,
-                archived: true,
-              }
-            : item,
-        ),
-      );
-    } catch (err) {
-      console.error("archiveConversation error:", err);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  /* =====================================================
-     UNARCHIVE
-  ===================================================== */
-
-  const handleUnarchive = async () => {
-    if (!selectedConversation) return;
-
-    const conversationId = getConversationId(selectedConversation);
-
-    if (!conversationId) return;
-
-    try {
-      setActionLoading(true);
-
-      if (typeof inboxApi.unarchiveConversation === "function") {
         await inboxApi.unarchiveConversation(conversationId);
-      } else {
-        console.warn("inboxApi.unarchiveConversation is not available.");
 
-        return;
+        updateConversation(conversationId, {
+          archived: false,
+        });
+      } else {
+        await inboxApi.archiveConversation(conversationId);
+
+        updateConversation(conversationId, {
+          archived: true,
+        });
       }
 
-      const updated = {
-        ...selectedConversation,
-        archived: false,
-      };
-
-      setSelectedConversation(updated);
-
-      setConversations((prev) =>
-        prev.map((item) =>
-          getConversationId(item) === conversationId
-            ? {
-                ...item,
-                archived: false,
-              }
-            : item,
-        ),
-      );
+      setShowMenu(false);
     } catch (err) {
-      console.error("unarchiveConversation error:", err);
+      console.error("archive conversation error:", err);
     } finally {
       setActionLoading(false);
     }
   };
 
   /* =====================================================
-     MOBILE BACK
+     BACK TO LIST
   ===================================================== */
 
-  const handleBackToList = () => {
+  const handleBack = () => {
     setMobileView("list");
   };
 
@@ -700,178 +607,223 @@ const Inbox = () => {
     ? getChannel(selectedConversation)
     : "whatsapp";
 
+  const selectedId = getConversationId(selectedConversation);
+
   /* =====================================================
-     TOTAL UNREAD
+     COUNTS
   ===================================================== */
 
-  const totalUnread = useMemo(() => {
-    return conversations.reduce(
-      (total, conversation) => total + getUnreadCount(conversation),
-      0,
-    );
-  }, [conversations]);
+  const totalUnread = conversations.reduce(
+    (total, item) => total + getUnreadCount(item),
+    0,
+  );
+
+  const activeCount = conversations.filter(
+    (item) => item.archived !== true,
+  ).length;
+
+  const unreadCount = conversations.filter(
+    (item) => getUnreadCount(item) > 0,
+  ).length;
 
   /* =====================================================
-     UI
+     RENDER
   ===================================================== */
 
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden bg-white">
+    <div className="inbox-page">
       {/* =================================================
           LEFT SIDEBAR
       ================================================= */}
 
       <aside
-        className={`flex w-full shrink-0 flex-col border-r border-gray-200 bg-white md:w-[340px] lg:w-[360px] ${
-          mobileView !== "list" ? "hidden md:flex" : "flex"
+        className={`inbox-sidebar ${
+          mobileView === "chat" ? "inbox-mobile-hidden" : ""
         }`}
       >
-        {/* SIDEBAR HEADER */}
+        {/* HEADER */}
 
-        <div className="border-b border-gray-200">
-          <div className="flex h-12 items-center justify-between px-4">
+        <div className="inbox-sidebar-header">
+          <div className="inbox-heading-row">
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Inbox</h1>
+              <div className="inbox-title-row">
+                <h1>Inbox</h1>
 
-              <p className="text-[11px] text-gray-500">
-                {conversations.length} conversations
-                {totalUnread > 0 ? ` • ${totalUnread} unread` : ""}
-              </p>
+                <span className="inbox-total-badge">
+                  {conversations.length}
+                </span>
+              </div>
+
+              <p>Manage all your customer conversations</p>
             </div>
 
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
-                title="Refresh"
-              >
-                {refreshing ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={16} />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowFilters((value) => !value)}
-                className={`flex h-8 w-8 items-center justify-center rounded-md ${
-                  showFilters
-                    ? "bg-gray-100 text-gray-900"
-                    : "text-gray-500 hover:bg-gray-100"
-                }`}
-                title="Filters"
-              >
-                <Filter size={16} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => fetchConversations({ silent: true })}
+              disabled={refreshing}
+              className="inbox-icon-button"
+              title="Refresh conversations"
+            >
+              <RefreshCw size={17} className={refreshing ? "inbox-spin" : ""} />
+            </button>
           </div>
 
           {/* SEARCH */}
 
-          <div className="px-3 pb-3">
-            <div className="relative">
-              <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
+          <div className="inbox-search">
+            <Search size={16} />
 
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search conversations..."
-                className="h-9 w-full rounded-md border border-gray-200 bg-gray-50 pl-9 pr-9 text-xs text-gray-800 outline-none placeholder:text-gray-400 focus:border-gray-300 focus:bg-white"
-              />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, phone or message..."
+            />
 
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
 
-          {/* FILTERS */}
+          {/* FILTER TOOLBAR */}
+
+          <div className="inbox-filter-toolbar">
+            <div className="inbox-filter-label">
+              <span>Conversations</span>
+
+              <span>{filteredConversations.length}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowFilters((value) => !value)}
+              className={`inbox-filter-button ${
+                showFilters ? "is-active" : ""
+              }`}
+            >
+              <Filter size={14} />
+              Filter
+              <ChevronDown
+                size={13}
+                className={showFilters ? "inbox-chevron-open" : ""}
+              />
+            </button>
+          </div>
+
+          {/* FILTER PANEL */}
 
           {showFilters && (
-            <div className="border-t border-gray-100 bg-gray-50 px-3 py-3">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="inbox-filter-panel">
+              <div>
+                <label>Channel</label>
+
                 <select
                   value={channelFilter}
                   onChange={(e) => setChannelFilter(e.target.value)}
-                  className="h-8 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700 outline-none"
                 >
                   <option value="all">All channels</option>
-
                   <option value="whatsapp">WhatsApp</option>
-
-                  <option value="email">Email</option>
-
-                  <option value="sms">SMS</option>
-
                   <option value="facebook">Facebook</option>
-
                   <option value="instagram">Instagram</option>
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
                 </select>
+              </div>
+
+              <div>
+                <label>Status</label>
 
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-8 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700 outline-none"
                 >
-                  <option value="all">All</option>
-
+                  <option value="all">All conversations</option>
                   <option value="active">Active</option>
-
                   <option value="unread">Unread</option>
-
                   <option value="starred">Starred</option>
-
                   <option value="archived">Archived</option>
                 </select>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setChannelFilter("all");
+                  setStatusFilter("all");
+                  setSearch("");
+                }}
+                className="inbox-clear-filters"
+              >
+                Clear filters
+              </button>
             </div>
           )}
         </div>
 
+        {/* QUICK COUNTS */}
+
+        <div className="inbox-quick-stats">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={statusFilter === "all" ? "is-active" : ""}
+          >
+            <InboxIcon size={14} />
+            All
+            <span>{conversations.length}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter("unread")}
+            className={statusFilter === "unread" ? "is-active" : ""}
+          >
+            <Circle size={12} />
+            Unread
+            <span>{unreadCount}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter("active")}
+            className={statusFilter === "active" ? "is-active" : ""}
+          >
+            <MessageCircle size={13} />
+            Active
+            <span>{activeCount}</span>
+          </button>
+        </div>
+
         {/* CONVERSATION LIST */}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="inbox-conversation-list">
           {loading ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Loader2 size={16} className="animate-spin" />
-                Loading conversations...
-              </div>
+            <div className="inbox-loading">
+              <Loader2 size={22} className="inbox-spin" />
+              <span>Loading conversations...</span>
             </div>
           ) : error ? (
-            <div className="p-4">
-              <div className="rounded-md border border-red-200 bg-red-50 p-3">
-                <p className="text-xs font-medium text-red-700">{error}</p>
+            <div className="inbox-error">
+              <p>{error}</p>
 
-                <button
-                  type="button"
-                  onClick={() => fetchConversations()}
-                  className="mt-2 text-xs font-semibold text-red-700 underline"
-                >
-                  Try again
-                </button>
-              </div>
+              <button type="button" onClick={() => fetchConversations()}>
+                Try again
+              </button>
             </div>
           ) : filteredConversations.length === 0 ? (
             <EmptyState
-              title="No conversations"
+              icon={MessageCircle}
+              title="No conversations found"
               description={
                 search
-                  ? "No conversations match your search."
-                  : "There are no conversations to display."
+                  ? "Try another name, phone number or keyword."
+                  : "New customer conversations will appear here."
               }
             />
           ) : (
@@ -882,42 +834,197 @@ const Inbox = () => {
                 <ConversationItem
                   key={id}
                   conversation={conversation}
-                  selected={id === getConversationId(selectedConversation)}
+                  selected={id === selectedId}
                   onClick={handleSelectConversation}
                 />
               );
             })
           )}
         </div>
+
+        {/* SIDEBAR FOOTER */}
+
+        <div className="inbox-sidebar-footer">
+          <div className="inbox-footer-status">
+            <span className="inbox-online-dot" />
+            <span>Inbox connected</span>
+          </div>
+
+          <span>{totalUnread} unread messages</span>
+        </div>
       </aside>
 
       {/* =================================================
-          CENTER CHAT
+          CHAT AREA
       ================================================= */}
 
       <main
-        className={`min-w-0 flex-1 ${
-          mobileView === "chat" ? "flex" : "hidden md:flex"
+        className={`inbox-chat-area ${
+          mobileView === "list" ? "inbox-mobile-hidden" : ""
         }`}
       >
         {!selectedConversation ? (
-          <div className="flex h-full flex-1">
-            <EmptyState
-              title="Select a conversation"
-              description="Choose a conversation from the inbox to view the messages."
-            />
+          <div className="inbox-welcome">
+            <div className="inbox-welcome-icon">
+              <MessageCircle size={34} strokeWidth={1.5} />
+            </div>
+
+            <h2>Your conversations, all in one place</h2>
+
+            <p>
+              Select a conversation from the sidebar to view messages and
+              respond to your customers.
+            </p>
+
+            <div className="inbox-welcome-stats">
+              <div>
+                <span>Total conversations</span>
+                <strong>{conversations.length}</strong>
+              </div>
+
+              <div>
+                <span>Unread messages</span>
+                <strong>{totalUnread}</strong>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="flex min-w-0 flex-1 flex-col">
-            {/* =================================================
-                CHAT HEADER
-            ================================================= */}
+          <div className="inbox-chat-container">
+            {/* CHAT HEADER */}
 
-            {/* =================================================
-                CHAT CONTENT
-            ================================================= */}
+            <div className="inbox-chat-header">
+              <div className="inbox-chat-user">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="inbox-back-button"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft size={19} />
+                </button>
 
-            <div className="min-h-0 flex-1 overflow-hidden">
+                <Avatar conversation={selectedConversation} size="large" />
+
+                <div className="inbox-chat-user-info">
+                  <div className="inbox-chat-name">
+                    <h2>{selectedName}</h2>
+
+                    <ChannelIcon channel={selectedChannel} />
+                  </div>
+
+                  <p>{selectedPhone || "No phone number available"}</p>
+                </div>
+              </div>
+
+              {/* ACTIONS */}
+
+              <div className="inbox-chat-actions">
+                <button
+                  type="button"
+                  onClick={handleToggleStar}
+                  disabled={actionLoading}
+                  className={`inbox-action-button ${
+                    selectedConversation.starred ? "is-starred" : ""
+                  }`}
+                  title={
+                    selectedConversation.starred ? "Remove star" : "Add star"
+                  }
+                >
+                  <Star
+                    size={17}
+                    fill={
+                      selectedConversation.starred ? "currentColor" : "none"
+                    }
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  disabled={actionLoading}
+                  className="inbox-action-button"
+                  title={
+                    selectedConversation.archived ? "Unarchive" : "Archive"
+                  }
+                >
+                  {actionLoading ? (
+                    <Loader2 size={17} className="inbox-spin" />
+                  ) : selectedConversation.archived ? (
+                    <ArchiveRestore size={17} />
+                  ) : (
+                    <Archive size={17} />
+                  )}
+                </button>
+
+                <div className="inbox-menu-wrapper">
+                  <button
+                    type="button"
+                    onClick={() => setShowMenu((value) => !value)}
+                    className="inbox-action-button"
+                    title="More options"
+                  >
+                    <MoreHorizontal size={19} />
+                  </button>
+
+                  {showMenu && (
+                    <div className="inbox-dropdown">
+                      <button
+                        type="button"
+                        onClick={handleArchive}
+                        disabled={actionLoading}
+                      >
+                        {selectedConversation.archived ? (
+                          <ArchiveRestore size={15} />
+                        ) : (
+                          <Archive size={15} />
+                        )}
+
+                        {selectedConversation.archived
+                          ? "Unarchive conversation"
+                          : "Archive conversation"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleToggleStar}
+                        disabled={actionLoading}
+                      >
+                        <Star size={15} />
+
+                        {selectedConversation.starred
+                          ? "Remove star"
+                          : "Mark as starred"}
+                      </button>
+
+                      <button type="button" onClick={() => setShowMenu(false)}>
+                        <X size={15} />
+                        Close menu
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ARCHIVED NOTICE */}
+
+            {selectedConversation.archived && (
+              <div className="inbox-archived-notice">
+                <Archive size={15} />
+                This conversation is archived.
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  disabled={actionLoading}
+                >
+                  Restore
+                </button>
+              </div>
+            )}
+
+            {/* CHAT BODY */}
+
+            <div className="inbox-chat-content">
               {selectedChannel === "whatsapp" ? (
                 <WhatsAppActivity
                   lead={{
@@ -926,34 +1033,947 @@ const Inbox = () => {
                     _id:
                       selectedCustomer?._id ||
                       selectedConversation?.leadId ||
-                      selectedConversation?.customer?.id ||
-                      selectedConversation?.leadId,
+                      selectedCustomer?.id ||
+                      null,
 
                     id:
                       selectedCustomer?._id ||
                       selectedConversation?.leadId ||
-                      selectedConversation?.customer?.id ||
-                      selectedConversation?.leadId,
+                      selectedCustomer?.id ||
+                      null,
 
                     name: selectedName,
-
                     phone: selectedPhone,
 
-                    conversationId: getConversationId(selectedConversation),
+                    conversationId: selectedId,
+
+                    channel: selectedChannel,
                   }}
                 />
               ) : (
                 <EmptyState
+                  icon={MessageCircle}
                   title={`${selectedChannel} conversation`}
-                  description="This channel is not connected to the WhatsApp activity component."
+                  description="This channel is not connected to the WhatsApp activity component yet."
                 />
               )}
             </div>
           </div>
         )}
       </main>
+
+      {/* =================================================
+          THEME STYLES
+      ================================================= */}
+
+      <style>{`
+
+        .inbox-page {
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+          display: flex;
+          overflow: hidden;
+          background: var(--app-bg);
+          color: var(--app-heading);
+          font-family: inherit;
+          border: 1px solid var(--app-border);
+          border-radius: 12px;
+        }
+
+        .inbox-page * {
+          box-sizing: border-box;
+        }
+
+        /* SIDEBAR */
+
+        .inbox-sidebar {
+          width: 355px;
+          min-width: 315px;
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          min-height: 0;
+          background: var(--app-surface);
+          border-right: 1px solid var(--app-border);
+        }
+
+        .inbox-sidebar-header {
+          padding: 20px 16px 14px;
+          border-bottom: 1px solid var(--app-border);
+        }
+
+        .inbox-heading-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+
+        .inbox-title-row {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+        }
+
+        .inbox-title-row h1 {
+          color: var(--app-heading);
+          font-size: 20px;
+          line-height: 1.3;
+          font-weight: 750;
+          letter-spacing: -.5px;
+        }
+
+        .inbox-title-row > span {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 23px;
+          height: 21px;
+          padding: 0 6px;
+          border-radius: 6px;
+          background: var(--theme-primary-soft);
+          color: var(--theme-primary);
+          font-size: 10px;
+          font-weight: 750;
+        }
+
+        .inbox-heading-row p {
+          margin-top: 4px;
+          color: var(--app-muted);
+          font-size: 11px;
+        }
+
+        .inbox-icon-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 35px;
+          height: 35px;
+          border: 1px solid var(--app-border);
+          border-radius: 9px;
+          background: var(--app-surface);
+          color: var(--app-muted);
+          transition: .2s;
+        }
+
+        .inbox-icon-button:hover {
+          color: var(--theme-primary);
+          background: var(--theme-primary-soft);
+          border-color: var(--theme-primary-border);
+        }
+
+        /* SEARCH */
+
+        .inbox-search {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          height: 40px;
+          padding: 0 11px;
+          border: 1px solid var(--app-border);
+          border-radius: 9px;
+          background: var(--app-subtle);
+          color: var(--app-muted);
+          transition: .2s;
+        }
+
+        .inbox-search:focus-within {
+          background: var(--app-surface);
+          border-color: var(--theme-primary);
+          box-shadow: 0 0 0 3px var(--theme-primary-soft);
+        }
+
+        .inbox-search input {
+          flex: 1;
+          min-width: 0;
+          height: 100%;
+          outline: none;
+          border: 0;
+          background: transparent;
+          color: var(--app-heading);
+          font-size: 11px;
+        }
+
+        .inbox-search input::placeholder {
+          color: var(--app-muted);
+        }
+
+        .inbox-search button {
+          display: flex;
+          align-items: center;
+          color: var(--app-muted);
+        }
+
+        /* FILTER */
+
+        .inbox-filter-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 17px;
+        }
+
+        .inbox-filter-label {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--app-heading);
+        }
+
+        .inbox-filter-label span:last-child {
+          color: var(--app-muted);
+          font-weight: 500;
+        }
+
+        .inbox-filter-button {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          height: 30px;
+          padding: 0 9px;
+          border: 1px solid var(--app-border);
+          border-radius: 7px;
+          background: var(--app-surface);
+          color: var(--app-body);
+          font-size: 10px;
+          font-weight: 650;
+          transition: .2s;
+        }
+
+        .inbox-filter-button:hover,
+        .inbox-filter-button.is-active {
+          color: var(--theme-primary);
+          background: var(--theme-primary-soft);
+          border-color: var(--theme-primary-border);
+        }
+
+        .inbox-chevron-open {
+          transform: rotate(180deg);
+        }
+
+        .inbox-filter-panel {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 13px;
+          padding: 12px;
+          border: 1px solid var(--app-border);
+          border-radius: 9px;
+          background: var(--app-subtle);
+        }
+
+        .inbox-filter-panel label {
+          display: block;
+          margin-bottom: 6px;
+          color: var(--app-muted);
+          font-size: 10px;
+          font-weight: 650;
+        }
+
+        .inbox-filter-panel select {
+          width: 100%;
+          height: 33px;
+          padding: 0 7px;
+          outline: none;
+          border: 1px solid var(--app-border);
+          border-radius: 6px;
+          background: var(--app-surface);
+          color: var(--app-heading);
+          font-size: 10px;
+        }
+
+        .inbox-filter-panel select:focus {
+          border-color: var(--theme-primary);
+        }
+
+        .inbox-clear-filters {
+          grid-column: 1 / -1;
+          justify-self: start;
+          color: var(--theme-primary);
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        /* QUICK STATS */
+
+        .inbox-quick-stats {
+          display: flex;
+          gap: 5px;
+          padding: 11px 12px;
+          border-bottom: 1px solid var(--app-border);
+          background: var(--app-surface);
+        }
+
+        .inbox-quick-stats button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          min-width: 0;
+          flex: 1;
+          height: 30px;
+          padding: 0 5px;
+          border-radius: 7px;
+          color: var(--app-muted);
+          font-size: 9px;
+          font-weight: 650;
+          transition: .2s;
+        }
+
+        .inbox-quick-stats button span {
+          color: var(--app-heading);
+          font-size: 9px;
+          font-weight: 750;
+        }
+
+        .inbox-quick-stats button:hover,
+        .inbox-quick-stats button.is-active {
+          color: var(--theme-primary);
+          background: var(--theme-primary-soft);
+        }
+
+        .inbox-quick-stats button.is-active span {
+          color: var(--theme-primary);
+        }
+
+        /* CONVERSATION LIST */
+
+        .inbox-conversation-list {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          background: var(--app-surface);
+        }
+
+        .inbox-conversation-list::-webkit-scrollbar,
+        .inbox-chat-content::-webkit-scrollbar {
+          width: 5px;
+        }
+
+        .inbox-conversation-list::-webkit-scrollbar-thumb,
+        .inbox-chat-content::-webkit-scrollbar-thumb {
+          border-radius: 10px;
+          background: var(--app-border);
+        }
+
+        .inbox-conversation {
+          position: relative;
+          display: flex;
+          width: 100%;
+          gap: 11px;
+          padding: 14px 13px;
+          text-align: left;
+          border-bottom: 1px solid var(--app-border);
+          background: var(--app-surface);
+          transition: background .2s;
+        }
+
+        .inbox-conversation:hover {
+          background: var(--app-hover);
+        }
+
+        .inbox-conversation.is-selected {
+          background: var(--theme-primary-soft);
+        }
+
+        .inbox-conversation.is-selected::before {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          width: 3px;
+          content: "";
+          border-radius: 0 4px 4px 0;
+          background: var(--theme-primary);
+        }
+
+        /* AVATAR */
+
+        .inbox-avatar {
+          position: relative;
+          display: flex;
+          flex-shrink: 0;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: var(--theme-primary-soft);
+          color: var(--theme-primary);
+          font-weight: 750;
+          letter-spacing: -.4px;
+        }
+
+        .inbox-avatar-normal {
+          width: 43px;
+          height: 43px;
+          font-size: 13px;
+        }
+
+        .inbox-avatar-large {
+          width: 43px;
+          height: 43px;
+          font-size: 13px;
+        }
+
+        .inbox-avatar-status {
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          width: 10px;
+          height: 10px;
+          border: 2px solid var(--app-surface);
+          border-radius: 50%;
+          background: #16a34a;
+        }
+
+        /* CONVERSATION TEXT */
+
+        .inbox-conversation-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .inbox-conversation-top,
+        .inbox-conversation-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 7px;
+        }
+
+        .inbox-name-group {
+          display: flex;
+          align-items: center;
+          min-width: 0;
+          gap: 6px;
+        }
+
+        .inbox-customer-name {
+          overflow: hidden;
+          color: var(--app-heading);
+          font-size: 11px;
+          font-weight: 750;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .inbox-time {
+          flex-shrink: 0;
+          color: var(--app-muted);
+          font-size: 9px;
+        }
+
+        .inbox-channel-icon {
+          display: inline-flex;
+          flex-shrink: 0;
+          align-items: center;
+          justify-content: center;
+          width: 17px;
+          height: 17px;
+          border-radius: 50%;
+          font-size: 9px;
+          font-weight: 800;
+        }
+
+        .inbox-channel-whatsapp {
+          background: #dcfce7;
+          color: #15803d;
+        }
+
+        .inbox-channel-facebook {
+          background: #dbeafe;
+          color: #2563eb;
+        }
+
+        .inbox-channel-instagram {
+          background: #fce7f3;
+          color: #db2777;
+        }
+
+        .inbox-channel-email {
+          background: #e0e7ff;
+          color: #4f46e5;
+        }
+
+        .inbox-channel-sms {
+          background: #f3e8ff;
+          color: #9333ea;
+        }
+
+        .inbox-star-active {
+          flex-shrink: 0;
+          color: #eab308;
+        }
+
+        .inbox-conversation-bottom {
+          margin-top: 7px;
+        }
+
+        .inbox-last-message {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+          overflow: hidden;
+          color: var(--app-muted);
+          font-size: 10px;
+          line-height: 1.5;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .inbox-message-tick {
+          flex-shrink: 0;
+          color: var(--theme-primary);
+        }
+
+        .inbox-unread-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          border-radius: 20px;
+          background: var(--theme-primary);
+          color: white;
+          font-size: 9px;
+          font-weight: 750;
+        }
+
+        .inbox-customer-phone {
+          margin-top: 4px;
+          overflow: hidden;
+          color: var(--app-muted);
+          font-size: 9px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .inbox-sidebar-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 12px 14px;
+          border-top: 1px solid var(--app-border);
+          background: var(--app-surface);
+          color: var(--app-muted);
+          font-size: 9px;
+        }
+
+        .inbox-footer-status {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .inbox-online-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #16a34a;
+        }
+
+        /* CHAT AREA */
+
+        .inbox-chat-area {
+          position: relative;
+          display: flex;
+          flex: 1;
+          min-width: 0;
+          min-height: 0;
+          flex-direction: column;
+          background: var(--app-bg);
+        }
+
+        .inbox-chat-container {
+          display: flex;
+          flex: 1;
+          min-width: 0;
+          min-height: 0;
+          flex-direction: column;
+        }
+
+        /* CHAT HEADER */
+
+        .inbox-chat-header {
+          position: relative;
+          z-index: 10;
+          display: flex;
+          min-height: 76px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 20px;
+          border-bottom: 1px solid var(--app-border);
+          background: var(--app-surface);
+        }
+
+        .inbox-chat-user {
+          display: flex;
+          min-width: 0;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .inbox-chat-user-info {
+          min-width: 0;
+        }
+
+        .inbox-chat-name {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .inbox-chat-name h2 {
+          overflow: hidden;
+          color: var(--app-heading);
+          font-size: 13px;
+          font-weight: 750;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .inbox-chat-user-info > p {
+          margin-top: 4px;
+          color: var(--app-muted);
+          font-size: 10px;
+        }
+
+        .inbox-chat-actions {
+          display: flex;
+          flex-shrink: 0;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .inbox-action-button,
+        .inbox-back-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 35px;
+          height: 35px;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          color: var(--app-muted);
+          transition: .2s;
+        }
+
+        .inbox-action-button:hover,
+        .inbox-back-button:hover {
+          border-color: var(--app-border);
+          background: var(--app-hover);
+          color: var(--theme-primary);
+        }
+
+        .inbox-action-button.is-starred {
+          color: #eab308;
+          background: rgba(234, 179, 8, .10);
+        }
+
+        .inbox-back-button {
+          display: none;
+        }
+
+        /* MENU */
+
+        .inbox-menu-wrapper {
+          position: relative;
+        }
+
+        .inbox-dropdown {
+          position: absolute;
+          top: 42px;
+          right: 0;
+          z-index: 30;
+          width: 210px;
+          padding: 5px;
+          border: 1px solid var(--app-border);
+          border-radius: 10px;
+          background: var(--app-surface);
+          box-shadow: 0 10px 30px rgba(15, 23, 42, .12);
+        }
+
+        .inbox-dropdown button {
+          display: flex;
+          width: 100%;
+          align-items: center;
+          gap: 9px;
+          padding: 10px;
+          border-radius: 7px;
+          color: var(--app-body);
+          text-align: left;
+          font-size: 10px;
+          transition: .2s;
+        }
+
+        .inbox-dropdown button:hover {
+          background: var(--app-hover);
+          color: var(--theme-primary);
+        }
+
+        .inbox-dropdown button:disabled {
+          opacity: .5;
+          cursor: not-allowed;
+        }
+
+        /* ARCHIVED */
+
+        .inbox-archived-notice {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 9px 12px;
+          border-bottom: 1px solid var(--app-border);
+          background: var(--app-subtle);
+          color: var(--app-muted);
+          font-size: 10px;
+        }
+
+        .inbox-archived-notice button {
+          color: var(--theme-primary);
+          font-weight: 750;
+        }
+
+        /* CHAT BODY */
+
+        .inbox-chat-content {
+          display: flex;
+          flex: 1;
+          min-width: 0;
+          min-height: 0;
+          overflow: hidden;
+          background: var(--app-bg);
+        }
+
+        .inbox-chat-content > * {
+          width: 100%;
+          min-width: 0;
+        }
+
+        /* WELCOME */
+
+        .inbox-welcome {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 25px;
+          text-align: center;
+        }
+
+        .inbox-welcome-icon {
+          display: flex;
+          width: 76px;
+          height: 76px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--theme-primary-border);
+          border-radius: 23px;
+          background: var(--theme-primary-soft);
+          color: var(--theme-primary);
+        }
+
+        .inbox-welcome h2 {
+          margin-top: 20px;
+          color: var(--app-heading);
+          font-size: 18px;
+          font-weight: 750;
+        }
+
+        .inbox-welcome > p {
+          max-width: 390px;
+          margin-top: 9px;
+          color: var(--app-muted);
+          font-size: 12px;
+          line-height: 1.8;
+        }
+
+        .inbox-welcome-stats {
+          display: flex;
+          gap: 12px;
+          margin-top: 28px;
+        }
+
+        .inbox-welcome-stats > div {
+          min-width: 140px;
+          padding: 14px;
+          border: 1px solid var(--app-border);
+          border-radius: 10px;
+          background: var(--app-surface);
+        }
+
+        .inbox-welcome-stats span,
+        .inbox-welcome-stats strong {
+          display: block;
+        }
+
+        .inbox-welcome-stats span {
+          color: var(--app-muted);
+          font-size: 10px;
+        }
+
+        .inbox-welcome-stats strong {
+          margin-top: 5px;
+          color: var(--app-heading);
+          font-size: 20px;
+        }
+
+        /* EMPTY / LOADING / ERROR */
+
+        .inbox-empty-state,
+        .inbox-loading {
+          display: flex;
+          min-height: 230px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          text-align: center;
+        }
+
+        .inbox-empty-icon {
+          display: flex;
+          width: 55px;
+          height: 55px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 17px;
+          background: var(--app-subtle);
+          color: var(--app-muted);
+        }
+
+        .inbox-empty-state h3 {
+          margin-top: 13px;
+          color: var(--app-heading);
+          font-size: 12px;
+          font-weight: 750;
+        }
+
+        .inbox-empty-state p {
+          max-width: 220px;
+          margin-top: 6px;
+          color: var(--app-muted);
+          font-size: 10px;
+          line-height: 1.7;
+        }
+
+        .inbox-loading {
+          min-height: 200px;
+          gap: 10px;
+          color: var(--app-muted);
+          font-size: 11px;
+        }
+
+        .inbox-error {
+          padding: 20px;
+          color: #dc2626;
+          font-size: 11px;
+          text-align: center;
+        }
+
+        .inbox-error button {
+          margin-top: 10px;
+          color: var(--theme-primary);
+          font-weight: 750;
+        }
+
+        .inbox-spin {
+          animation: inbox-spin 1s linear infinite;
+        }
+
+        @keyframes inbox-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        /* RESPONSIVE */
+
+        @media (max-width: 767px) {
+          .inbox-page {
+            position: relative;
+            height: 100%;
+            min-height: 0;
+            border-radius: 0;
+            border-left: 0;
+            border-right: 0;
+          }
+
+          .inbox-sidebar {
+            width: 100%;
+            min-width: 0;
+          }
+
+          .inbox-mobile-hidden {
+            display: none !important;
+          }
+
+          .inbox-chat-area {
+            width: 100%;
+          }
+
+          .inbox-chat-header {
+            min-height: 68px;
+            padding: 10px 12px;
+          }
+
+          .inbox-back-button {
+            display: flex;
+            width: 30px;
+            height: 34px;
+          }
+
+          .inbox-chat-user {
+            gap: 8px;
+          }
+
+          .inbox-chat-actions {
+            gap: 1px;
+          }
+
+          .inbox-action-button {
+            width: 32px;
+            height: 34px;
+          }
+
+          .inbox-welcome h2 {
+            font-size: 16px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .inbox-sidebar-header {
+            padding: 15px 11px 12px;
+          }
+
+          .inbox-conversation {
+            padding: 12px 10px;
+          }
+
+          .inbox-customer-name {
+            font-size: 10px;
+          }
+
+          .inbox-chat-name h2 {
+            max-width: 130px;
+          }
+
+          .inbox-chat-header {
+            gap: 5px;
+            padding: 8px;
+          }
+        }
+
+      `}</style>
     </div>
   );
-};
-
-export default Inbox;
+}
